@@ -70,7 +70,7 @@ unsafe void FragmentShader(byte* BGR, float* Attributes, int FaceIndex)
 ![Culling Example](https://i.imgur.com/I6QNBsm.png)
 
 ### Buffer caching
-The drawing and depth buffer can both be saved
+The drawing and depth buffer can both be saved. This can hugely improve performance by just rendering what is moving.
 ```c#
 //Initialize renderX and the Cached Buffer
 renderX GL = new renderX(1920, 1080, this.Handle);
