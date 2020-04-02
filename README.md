@@ -1,5 +1,5 @@
 # renderXF
-High performance software rendering in c#<br/>
+renderXF is a realtime, high performance, software renderer written in c#.<br/>
 
 ## Features
 - Fully programmable fragment shader
