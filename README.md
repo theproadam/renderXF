@@ -1,5 +1,5 @@
 # renderXF
-renderXF is a realtime, high performance, software renderer written in c#. It used .net 4.5. Parallelization and memory pointers are used throughout to heavily improve performance. Unfortunately it is currently pixel fill rate limited. <br/>
+renderXF is a realtime, high performance, software renderer written in c#. It used .net 4.5. Parallelization and memory pointers are used throughout to heavily improve performance. This software renderer is primarily focused on CAD thanks to its buffer caching capability. Unfortunately it is currently pixel fill rate limited. <br/>
 
 ## Features
 - Fully programmable fragment shader
@@ -9,6 +9,7 @@ renderXF is a realtime, high performance, software renderer written in c#. It us
 - Screenspace shaders (WIP)
 - Direct blit (No bitmaps required)
 - GDI+ Interoperability (blit bitmaps onto the drawbuffer)
+- Draw and Depth Buffer caching
 - Simple Shader Code
 
 
@@ -18,7 +19,7 @@ First a shader has be declared with its type, and attribute settings.
 Shader myShader = new Shader(VertexShader, FragmentShader, GLRenderMode.Line, GLExtraAttributeData.None);
 
 ```
-For performance reasons, renderXF has its own built in camera position and rotation transformation system. It can be disabled via  SetOverrideCameraTransform() method. However the XYZ to XY transform systems are not programmable.
+For performance reasons, renderXF has its own built in camera position and rotation transformation system. It can be disabled via the SetOverrideCameraTransform() method. However the XYZ to XY transform systems are not programmable.
 
 ```c#
 unsafe void VertexShader(float* OUT, float* IN, int FaceIndex)
@@ -68,4 +69,22 @@ unsafe void FragmentShader(byte* BGR, float* Attributes, int FaceIndex)
 #### Backface and Frontface culling
 ![Culling Example](https://i.imgur.com/I6QNBsm.png)
 
+### Buffer caching
+The drawing and depth buffer can both be saved
+```c#
+//Initialize renderX and the Cached Buffer
+renderX GL = new renderX(1920, 1080, this.Handle);
+GLCachedBuffer cachedBuffer = new GLCachedBuffer(GL);
 
+//Tell renderX to create a copy of the drawing and depth buffer upon draw
+GL.CreateCopyOnDraw(cachedBuffer);
+//Draw the object
+GL.Draw();
+
+//During the next frame, just recopy the old buffers
+GL.CopyFromCache(cachedBuffer, true, false)
+
+//You can just overwrite the existing buffers or perform a depth test for each pixel.
+```
+
+![Caching Example](https://i.imgur.com/2y0COTs.png)
