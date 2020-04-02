@@ -1,0 +1,10 @@
+c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\bin\Debug\renderXF.exe.config
+c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\bin\Debug\renderXF.exe
+c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\bin\Debug\renderXF.pdb
+c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.Form1.resources
+c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.Properties.Resources.resources
+c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.StartupForm.resources
+c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.csproj.GenerateResource.Cache
+c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.exe
+c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.pdb
+C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.csprojResolveAssemblyReference.cache
