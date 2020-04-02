@@ -1,5 +1,5 @@
 # renderXF
-renderXF is a realtime, high performance, software renderer written in c#. It used .net 4.5. Parallelization and memory pointers are used throughout to heavily improve performance. This software renderer is primarily focused on CAD thanks to its buffer caching capability. Unfortunately it is currently pixel fill rate limited. <br/>
+renderXF is a realtime, high performance, software renderer written in c#. It used .net 4.5. Parallelization and memory pointers are used throughout to heavily improve performance. This software renderer is primarily focused on CAD thanks to its buffer caching capability. The current demo uses STL files. Unfortunately it is currently pixel fill rate limited. <br/>
 
 ## Features
 - Fully programmable fragment shader
