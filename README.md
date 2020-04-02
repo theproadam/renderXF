@@ -23,11 +23,13 @@ High performance software rendering in c#<br/>
 
 #### Hardcoded Gouraud Shader: 12938 Triangles, 1920x1017, ~9.1ms
 ![Hardcoded Gouraud Shading Example](https://i.imgur.com/8g3ieII.png) 
+
 #### Hardcoded Gouraud Shader: 7980 Triangles, 1920x1017, ~9.3ms
 ![Hardcoded Gouraud Shading Example](https://i.imgur.com/2nbCUOs.png) 7980 Triangles, 1920x1017, ~9.3ms
 
-####
-![Wireframe Mode](https://i.imgur.com/2nbCUOs.png) 2208 Triangles, 1920x1017, ~0.47ms
+#### Wireframe Shader
+![Wireframe Mode](https://i.imgur.com/QB98IEo.png) 2208 Triangles, 1920x1017, ~0.47ms
+
 #### Both perpsective and orthographic modes are supported
 ![Perspective and Orthographic interpolation](https://i.imgur.com/4SR1Qtx.gif)
 
