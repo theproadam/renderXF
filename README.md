@@ -2,7 +2,8 @@
 High performance software rendering in c#<br/>
 
 ## Features
-- Fully programmable vertex and fragment shader
+- Fully programmable fragment shader
+- Partially programmable vertex shader
 - Hardcoded performance features
 - Screenspace shaders (WIP)
 - Direct blit (No bitmaps required)
