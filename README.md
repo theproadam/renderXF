@@ -1,9 +1,10 @@
 # renderXF
-renderXF is a realtime, high performance, software renderer written in c#.<br/>
+renderXF is a realtime, high performance, software renderer written in c#. It used .net 4.5. Parallelization and memory pointers are used throughout to heavily improve performance. Unfortunately it is currently pixel fill rate limited. <br/>
 
 ## Features
 - Fully programmable fragment shader
 - Partially programmable vertex shader
+- Built in camera transforms
 - Hardcoded performance features
 - Screenspace shaders (WIP)
 - Direct blit (No bitmaps required)
