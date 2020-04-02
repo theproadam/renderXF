@@ -3515,23 +3515,23 @@ namespace renderX2
             if (matrixlerpv == 0)
                 for (int im = 0; im < BUFFER_SIZE; im++)
                 {
-                    VERTEX_DATA[im * 3 + 0] = rw + (VERTEX_DATA[im * 3 + 0] / VERTEX_DATA[im * 3 + 2]) * fw;
-                    VERTEX_DATA[im * 3 + 1] = rh + (VERTEX_DATA[im * 3 + 1] / VERTEX_DATA[im * 3 + 2]) * fh;
-                    VERTEX_DATA[im * 3 + 2] = 1f / VERTEX_DATA[im * 3 + 2];
+                    VERTEX_DATA[im * Stride + 0] = rw + (VERTEX_DATA[im * Stride + 0] / VERTEX_DATA[im * Stride + 2]) * fw;
+                    VERTEX_DATA[im * Stride + 1] = rh + (VERTEX_DATA[im * Stride + 1] / VERTEX_DATA[im * Stride + 2]) * fh;
+                    VERTEX_DATA[im * Stride + 2] = 1f / VERTEX_DATA[im * Stride + 2];
                 }
             else if (matrixlerpv == 1)
                 for (int im = 0; im < BUFFER_SIZE; im++)
                 {
-                    VERTEX_DATA[im * 3 + 0] = rw + (VERTEX_DATA[im * 3 + 0] / ox);
-                    VERTEX_DATA[im * 3 + 1] = rh + (VERTEX_DATA[im * 3 + 1] / oy);
+                    VERTEX_DATA[im * Stride + 0] = rw + (VERTEX_DATA[im * Stride + 0] / ox);
+                    VERTEX_DATA[im * Stride + 1] = rh + (VERTEX_DATA[im * Stride + 1] / oy);
                 }
             else
                 for (int im = 0; im < BUFFER_SIZE; im++)
                 {
-                    VERTEX_DATA[im * 3 + 0] = rw + VERTEX_DATA[im * 3 + 0] / ((VERTEX_DATA[im * 3 + 2] * fwi - ox) * (1f - matrixlerpv) + ox);
-                    VERTEX_DATA[im * 3 + 1] = rh + VERTEX_DATA[im * 3 + 1] / ((VERTEX_DATA[im * 3 + 2] * fhi - oy) * (1f - matrixlerpv) + oy);
+                    VERTEX_DATA[im * Stride + 0] = rw + VERTEX_DATA[im * Stride + 0] / ((VERTEX_DATA[im * Stride + 2] * fwi - ox) * (1f - matrixlerpv) + ox);
+                    VERTEX_DATA[im * Stride + 1] = rh + VERTEX_DATA[im * Stride + 1] / ((VERTEX_DATA[im * Stride + 2] * fhi - oy) * (1f - matrixlerpv) + oy);
 
-                    VERTEX_DATA[im * 3 + 2] = 1f / (VERTEX_DATA[im * 3 + 2] + oValue);
+                    VERTEX_DATA[im * Stride + 2] = 1f / (VERTEX_DATA[im * Stride + 2] + oValue);
                 }
             #endregion
 
@@ -5789,7 +5789,7 @@ namespace renderX2
                     for (int i = (int)FromDATA[0]; i <= (int)ToDATA[0]; i++)
                     {
                         int tY = (int)(i * slope + b);
-                        //float s = farZ - (1f / ((slopeZ * (float)i + bZ)) - oValue);
+
                         float s;
                         if (cmatrix) s = farZ -  (1f / (slopeZ * (float)i + bZ) - oValue);
                         else s = farZ - (slopeZ * (float)i + bZ);

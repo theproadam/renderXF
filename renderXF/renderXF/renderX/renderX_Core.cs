@@ -619,6 +619,18 @@ namespace renderX2
             DC = TargetDC;
             HWND = LinkedHandle;
         }
+
+        /// <summary>
+        /// Exports the Drawing and Depth Buffer Pointers.
+        /// WARNING: THESE POINTERS RESET WHEN THE RESOLUTION IS CHANGED.
+        /// </summary>
+        /// <param name="Draw">The Drawing Buffer Address</param>
+        /// <param name="Depth">The Depth Buffer Address</param>
+        internal void GetBuffers(out IntPtr Draw, out IntPtr Depth)
+        {
+            Draw = DrawingBuffer;
+            Depth = DepthBuffer;
+        }
     }
 
     public enum GLRenderMode

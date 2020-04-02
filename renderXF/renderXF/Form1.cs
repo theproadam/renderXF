@@ -147,9 +147,9 @@ namespace renderXF
 
             ModelCenter = CalculateCenterOfModel(ref vertexpoints, out DistanceCenter);
 
-            vertexpoints = STLImporter.AverageUpFaceNormalsAndOutputVertexBuffer(Importer.AllTriangles, 45);
+           // vertexpoints = STLImporter.AverageUpFaceNormalsAndOutputVertexBuffer(Importer.AllTriangles, 45);
             NormalBuffer = new GLBuffer(normalBuffer, 3, MemoryLocation.Heap);
-            VertexBuffer = new GLBuffer(vertexpoints, 6, MemoryLocation.Heap);
+            VertexBuffer = new GLBuffer(vertexpoints, 3, MemoryLocation.Heap);
             vertexpoints = null;
 
             #region CubeObject
@@ -195,6 +195,7 @@ namespace renderXF
             #endregion
             LineBuffer = new GLBuffer(vpoints, 3, MemoryLocation.Heap);
             LineShader = new Shader(GridShaderVS, GridShaderFS, GLRenderMode.Line, GLExtraAttributeData.XYZ_CameraSpace);
+            
 
             #region CameraIndicator
             CameraIndicator = new Shader(CIVS, null, GLRenderMode.TriangleGouraud);
@@ -224,8 +225,9 @@ namespace renderXF
             #endregion
             
             this.MouseWheel += Form1_MouseWheel;
-            StandardShader = new Shader(null, FuncShader, GLRenderMode.Triangle, GLExtraAttributeData.XYZ_CameraSpace); //test triangle vs triangle flat
-           
+            StandardShader = new Shader(null, BasicShader, GLRenderMode.TriangleFlat); //test triangle vs triangle flat
+
+            
 
             RT = new RenderThread(144);
             RT.RenderFrame += RT_RenderFrame;
@@ -241,11 +243,12 @@ namespace renderXF
             GL.SetDebugWireFrameColor(0, 0, 255);
         //    GL.SetLinkedWireframe(true, 255, 255, 255);
 
-           // Debug.WriteLine("PolyCount: " + Importer.TriangleCount.ToString());
+            Debug.WriteLine("PolyCount: " + Importer.TriangleCount.ToString());
 
             BitmapUtility.PixelFormatOverride = true;
 
-            GL.SetWireFrameOFFSET(-1f);
+            
+            GL.SetWireFrameOFFSET(-0.1f);
             GL.SetFaceCulling(true, false);
             GL.FarZ = 100000;
             RT.Start();

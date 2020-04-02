@@ -51,16 +51,15 @@ namespace renderXF
             
         }
 
-
         unsafe void PrepareLightningData()
         {
-          //  lPos = GL.RotateToCameraSpace(lightPosition);
             rotLpos = GL.RotateToCameraSpace(lightPosition);
             lPos = lightPosition;
             ambient = ambientStrength * lightColor;
             lightDir = Vector3.Normalize(lPos);
             cLoc = GL.RotateToCameraSpace(new Vector3(0, 0, 0));
         }
+
 
         unsafe void StandardShader_Shader(byte* tA, float* test, int InstanceNumber)
         {
