@@ -61,4 +61,5 @@ unsafe void FragmentShader(byte* BGR, float* Attributes, int FaceIndex)
 #### Both perpsective and orthographic modes are supported
 ![Perspective and Orthographic interpolation](https://i.imgur.com/4SR1Qtx.gif)
 
-
+#### Late Wireframe (wireframe is drawn after render with preclipped polygons) supported with depth offset
+![Late Wireframe Example](https://i.imgur.com/5t9iNZn.png)
