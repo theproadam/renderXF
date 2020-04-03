@@ -82,9 +82,10 @@ GL.CreateCopyOnDraw(cachedBuffer);
 GL.Draw();
 
 //During the next frame, just recopy the old buffers
-GL.CopyFromCache(cachedBuffer, true, false)
-
-//You can just overwrite the existing buffers or perform a depth test for each pixel.
+//Copy with depth test:
+GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoopDepthTest)
+//Copy without depth test:
+GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoop)
 ```
 
 ![Caching Example](https://i.imgur.com/2y0COTs.png)
