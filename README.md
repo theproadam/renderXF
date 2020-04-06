@@ -71,8 +71,7 @@ unsafe void FragmentShader(byte* BGR, float* Attributes, int FaceIndex)
 
 ### Screen space shaders
 ![Post-Processing](https://i.imgur.com/cNpguJJ.png)
-
-First create the shader code:
+Example of screen space shader code:
 ```c#
 unsafe void VignettePass(byte* BGR, int posX, int posY)
 {
@@ -87,7 +86,7 @@ unsafe void VignettePass(byte* BGR, int posX, int posY)
     BGR[2] = (byte)(BGR[2] * Y);
 }
 ```
-Next create the shader:
+In use:
 ```c#
 Shader VignetteShader = new Shader(VignettePass);
 
