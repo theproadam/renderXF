@@ -69,7 +69,7 @@ unsafe void FragmentShader(byte* BGR, float* Attributes, int FaceIndex)
 #### Backface and Frontface culling
 ![Culling Example](https://i.imgur.com/I6QNBsm.png)
 
-#### Screen space shader
+### Screen space shaders
 ![Post-Processing](https://i.imgur.com/cNpguJJ.png)
 
 First create the shader code:
