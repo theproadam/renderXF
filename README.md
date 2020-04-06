@@ -69,6 +69,33 @@ unsafe void FragmentShader(byte* BGR, float* Attributes, int FaceIndex)
 #### Backface and Frontface culling
 ![Culling Example](https://i.imgur.com/I6QNBsm.png)
 
+#### Screen space shader
+![Post-Processing](https://i.imgur.com/cNpguJJ.png)
+
+First create the shader code:
+```c#
+unsafe void VignettePass(byte* BGR, int posX, int posY)
+{
+    float X = (2f * posX / renderWidth) - 1f;
+    float Y = (2f * posY / renderHeight) - 1f;
+
+    X = 1f - 0.5f * X * X;
+    Y = X * (1f - 0.5f * Y * Y);
+
+    BGR[0] = (byte)(BGR[0] * Y);
+    BGR[1] = (byte)(BGR[1] * Y);
+    BGR[2] = (byte)(BGR[2] * Y);
+}
+```
+Next create the shader:
+```c#
+Shader VignetteShader = new Shader(VignettePass);
+
+//Then during each frame, select and execute the shader
+GL.SelectShader(VignetteShader);
+GL.Pass();
+```
+
 ### Buffer caching
 The drawing and depth buffer can both be saved. This can hugely improve performance by just rendering what is moving.
 ```c#
