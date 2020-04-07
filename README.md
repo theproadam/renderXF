@@ -1,5 +1,5 @@
 # renderXF
-renderXF is a realtime, high performance, software renderer written in c#. It used .net 4.5. Parallelization and memory pointers are used throughout to heavily improve performance. This software renderer is primarily focused on CAD thanks to its buffer caching capability. The current demo uses STL files. Unfortunately it is currently pixel fill rate limited. <br/>
+renderXF is a realtime, high performance, software renderer written in c#. It uses .net 4.5. Parallelization and memory pointers are used throughout to heavily improve performance. This software renderer is primarily focused on CAD thanks to its buffer caching capability. The current demo uses STL files. Unfortunately it is currently pixel fill rate limited. <br/>
 
 ## Features
 - Fully programmable fragment shader
@@ -69,6 +69,32 @@ unsafe void FragmentShader(byte* BGR, float* Attributes, int FaceIndex)
 #### Backface and Frontface culling
 ![Culling Example](https://i.imgur.com/I6QNBsm.png)
 
+### Screen space shaders
+![Post-Processing](https://i.imgur.com/cNpguJJ.png)
+Example of screen space shader code:
+```c#
+unsafe void VignettePass(byte* BGR, int posX, int posY)
+{
+    float X = (2f * posX / renderWidth) - 1f;
+    float Y = (2f * posY / renderHeight) - 1f;
+
+    X = 1f - 0.5f * X * X;
+    Y = X * (1f - 0.5f * Y * Y);
+
+    BGR[0] = (byte)(BGR[0] * Y);
+    BGR[1] = (byte)(BGR[1] * Y);
+    BGR[2] = (byte)(BGR[2] * Y);
+}
+```
+In use:
+```c#
+Shader VignetteShader = new Shader(VignettePass);
+
+//Then during each frame, select and execute the shader
+GL.SelectShader(VignetteShader);
+GL.Pass();
+```
+
 ### Buffer caching
 The drawing and depth buffer can both be saved. This can hugely improve performance by just rendering what is moving.
 ```c#
@@ -81,10 +107,12 @@ GL.CreateCopyOnDraw(cachedBuffer);
 //Draw the object
 GL.Draw();
 
-//During the next frame, just recopy the old buffers
-GL.CopyFromCache(cachedBuffer, true, false)
+//During the next frame, just recopy the old buffers:
 
-//You can just overwrite the existing buffers or perform a depth test for each pixel.
+//Copy with depth test:
+GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoopDepthTest)
+//Copy without depth test:
+GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoop)
 ```
 
 ![Caching Example](https://i.imgur.com/2y0COTs.png)
