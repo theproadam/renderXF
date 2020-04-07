@@ -62,42 +62,10 @@ namespace renderX2
 
         public void SetRenderMode(bool FORWARDTRUE_DEFERREDFALSE)
         {
-            lock (ThreadLock) { throw new Exception("Deferred rendering is too expensive for a software renderer!"); } 
+            lock (ThreadLock) { throw new Exception("Not implemented!"); } 
         }
 
-        public void SetMatrix(RenderMatrix SourceMatrix)
-        {
-            lock (ThreadLock)
-            {
-                if (SourceMatrix.CheckForIllegalVariables())
-                    throw new Exception("Illegal Matrix Submitted. Please ensure proper FOV/Size has been submitted!");
-
-                if (SourceMatrix.iValue != -1)
-                {
-                    if (SourceMatrix.isGlobalSize)
-                        ops.UpdateRM(SourceMatrix.gFOV, SourceMatrix.gSize, SourceMatrix.iValue);
-
-
-                    return;
-                }
-
-
-                if (SourceMatrix.isOrthographic)
-                {
-                    if (SourceMatrix.isGlobalSize)
-                        ops.UpdateCM_O(SourceMatrix.gSize);
-                    else
-                        ops.UpdateRM_O(SourceMatrix.vSize, SourceMatrix.hSize);
-                }
-                else
-                {
-                    if (SourceMatrix.isGlobalSize)
-                        ops.UpdateCM(SourceMatrix.gFOV);
-                    else 
-                        ops.UpdateRM_P(SourceMatrix.vFOV, SourceMatrix.hFOV);
-                }
-            }
-        }
+        
 
         public void SetViewport(IntPtr NewHandle)
         {
@@ -138,14 +106,6 @@ namespace renderX2
                         ops.aptr = (int*)AnyBuffer;
                     }      
                 }
-            }
-        }
-
-        public void PushCameraProjectionMatrix(float degFOV)
-        {
-            lock (ThreadLock)
-            {
-                ops.UpdateCM(degFOV);
             }
         }
 
@@ -246,9 +206,7 @@ namespace renderX2
             lock (ThreadLock)
             {
                 ops.LinkedWFrame = value;
-                ops.lB = B;
-                ops.lG = G;
-                ops.lR = R;
+                ops.lValue = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
             }
         }
 
@@ -266,13 +224,10 @@ namespace renderX2
             }
         }
 
-        public unsafe void CopyFromCache(GLCachedBuffer SourceBuffer, bool UseSplitS, bool DepthTest)
+        public unsafe void CopyFromCache(GLCachedBuffer SourceBuffer, CopyMethod CopyOptions)
         {
             if (SourceBuffer == null)
                 throw new Exception("Cannot accept a null buffer!");
-
-            if (!UseSplitS & DepthTest)
-                throw new Exception("memcpy() does not support DepthTest");
 
             lock (ThreadLock)
             {
@@ -285,12 +240,9 @@ namespace renderX2
                 ops.CPptr = (byte*)CD.RGB_ptr;
                 ops.CIptr = (int*)CD.RGB_ptr;
 
-                if (DepthTest) 
-                    CopyQuickReverseDepthTest();
-                else {
-                    if (UseSplitS) CopyQuickSplitLoop();
-                    else CopyQuickReverse();
-                }
+                if (CopyOptions == CopyMethod.Memcpy) CopyQuickReverse();
+                else if (CopyOptions == CopyMethod.SplitLoop) CopyQuickSplitLoop();
+                else CopyQuickReverseDepthTest();
             }
         }
 
@@ -331,81 +283,8 @@ namespace renderX2
                     if (TargetY < 0) oY = -TargetY;
 
 
-                    Target.zibltfunc(DrawingBuffer, RenderWidth * 4, sW, sH, oX, oY, TargetX, TargetY, TransparencyKey.R, TransparencyKey.B, TransparencyKey.B);
+                    Target.zibltfunc(DrawingBuffer, RenderWidth * 4, sW, sH, oX, oY, TargetX, TargetY, TransparencyKey.R, TransparencyKey.G, TransparencyKey.B);
                 }
-        }
-
-        /// <summary>
-        /// INTERNAL FUNCTION, DO NOT USE
-        /// </summary>
-        internal unsafe void zibltfunc(IntPtr RGB, int wSD, int sW, int sH, int oX, int oY, int wX, int wY, byte R, byte G, byte B)
-        {
-            byte* tptr = (byte*)DrawingBuffer;
-            byte* sptr = (byte*)RGB;
-
-       //     for (int h = oY; h < sH; h++)
-            Parallel.For(oY, sH, h=>
-            {
-                for (int w = oX; w < sW; w++)
-                {
-                    if (sptr[h * wSD + w * 4 + 0] == B && sptr[h * wSD + w * 4 + 1] == G && sptr[h * wSD + w * 4 + 2] == R)
-                        continue;
-
-                    tptr[(h + wY) * RenderWidth * 4 + (w + wX) * 4 + 0] = sptr[h * wSD + w * 4 + 0];
-                    tptr[(h + wY) * RenderWidth * 4 + (w + wX) * 4 + 1] = sptr[h * wSD + w * 4 + 1];
-                    tptr[(h + wY) * RenderWidth * 4 + (w + wX) * 4 + 2] = sptr[h * wSD + w * 4 + 2];
-                }
-            });    
-        }
-
-        /// <summary>
-        /// Internal Function DO NOT USE
-        /// </summary>
-        /// <param name="RGB"></param>
-        /// <param name="wSD"></param>
-        /// <param name="sW"></param>
-        /// <param name="sH"></param>
-        /// <param name="oX"></param>
-        /// <param name="oY"></param>
-        /// <param name="wX"></param>
-        /// <param name="wY"></param>
-        /// <param name="hr"></param>
-        /// <param name="B"></param>
-        /// <param name="G"></param>
-        /// <param name="R"></param>
-        internal unsafe void gdiplusinteropcopy(IntPtr RGB, int wSD, int sW, int sH, int oX, int oY, int wX, int wY, int hr, byte B, byte G, byte R)
-        {
-            byte* tptr = (byte*)DrawingBuffer;
-            byte* sptr = (byte*)RGB;
-
-            Parallel.For(oY, sH, h =>
-            {
-                for (int w = oX; w < sW; w++)
-                {
-                    if (sptr[(hr - h) * wSD + w * 4 + 0] == B && sptr[(hr - h) * wSD + w * 4 + 1] == G && sptr[(hr - h) * wSD + w * 4 + 2] == R)
-                        continue;
-
-                    tptr[(h + wY) * RenderWidth * 4 + (w + wX) * 4 + 0] = sptr[(hr - h) * wSD + w * 4 + 0];
-                    tptr[(h + wY) * RenderWidth * 4 + (w + wX) * 4 + 1] = sptr[(hr - h) * wSD + w * 4 + 1];
-                    tptr[(h + wY) * RenderWidth * 4 + (w + wX) * 4 + 2] = sptr[(hr - h) * wSD + w * 4 + 2];
-                }
-            });    
-        }
-
-        internal unsafe void gdipluscopy(IntPtr RGB, int wSD, int sW, int sH, int oX, int oY, int wX, int wY, int hr)
-        {
-            byte* tptr = (byte*)DrawingBuffer;
-            byte* sptr = (byte*)RGB;
-
-            Parallel.For(oY, sH, h =>
-            {
-                for (int w = oX; w < sW; w++)
-                {
-                    sptr[(hr - h) * wSD + w * 4 + 0] = tptr[(h + wY) * RenderWidth * 4 + (w + wX) * 4 + 0];
-                    sptr[(hr - h) * wSD + w * 4 + 1] = tptr[(h + wY) * RenderWidth * 4 + (w + wX) * 4 + 1];
-                    sptr[(hr - h) * wSD + w * 4 + 2] = tptr[(h + wY) * RenderWidth * 4 + (w + wX) * 4 + 2];
-                }
-            });
         }
 
         public void SetClickBufferWrite(bool Value)

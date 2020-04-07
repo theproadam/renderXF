@@ -149,29 +149,6 @@ namespace renderX2
             if (Shader == null)
                 throw new Exception("Shader cannot be null!");
 
-            if (Shader.ShaderFragmentBasic != null)
-            {
-                ops.SBsc = Shader.ShaderFragmentBasic;
-            }
-            else if (Shader.ShaderFragmentAdvanced != null)
-            {
-                ops.SAdv = Shader.ShaderFragmentAdvanced;
-            }
-            else if (Shader.ShaderPass != null)
-            { 
-                
-            }
-            else if (Shader.sType == GLRenderMode.TriangleGouraud)
-            { 
-            
-            }
-            else
-            {
-                throw new Exception("There is no fragment shader attached to this shader!");
-            }
-
-            if (Shader.ShaderFragmentAdvanced != null & Shader.ShaderFragmentBasic != null)
-                throw new Exception("Two Shaders Submitted!");
             SelectedShader = Shader;
         }
 
@@ -186,9 +163,6 @@ namespace renderX2
             if (SB == null)
                 throw new Exception("No Buffer Selected, Cannot Draw!");
 
-          //  if (SelectedShader.ShaderFragmentBasic == null & SelectedShader.sLevel == GLExtraAttributeData.None & !ExceptionOverride)
-         //       throw new WarningException("No Attribute Or Screen Data, Please Use Basic Fragment Shader.");
-
             if (SelectedShader.manualCamera & SelectedShader.ShaderVertex == null)
                 throw new Exception("A Vertex Shader Is Required for Manual Camera!");
 
@@ -199,143 +173,101 @@ namespace renderX2
                 ops.dptr = (float*)DepthBuffer;
                 ops.iptr = (int*)DrawingBuffer;
 
-                if (SelectedShader.sType == GLRenderMode.Triangle){
-                    lock (ThreadLock)
-                    {
-                        if (SelectedShader.ShaderFragmentBasic != null & SelectedShader.ShaderFragmentAdvanced != null)
-                            throw new Exception("Two separate Fragment Shaders submitted!");
-
-                        if (SelectedShader.ShaderFragmentBasic == null & SelectedShader.ShaderFragmentAdvanced == null)
-                            throw new Exception("No Fragment Shader detected!");
-
-                        if (SB.stride != 3 & SelectedShader.ShaderFragmentBasic != null & SelectedShader.vShdrAttr == -1)
-                            throw new Exception("The Basic Fragment Shader does not support Extra Attribute Data!");
-
-                        if (SB.stride == 3 && SelectedShader.ShaderFragmentBasic == null && SelectedShader.sLevel == GLExtraAttributeData.None)
-                            throw new WarningException("No Attribute Or Screen Data, Please Use Basic Fragment Shader");
-
-                        if (SB.stride != 3 & SelectedShader.ShaderFragmentAdvanced == null & SelectedShader.sLevel == GLExtraAttributeData.None & SelectedShader.vShdrAttr == -1)
-                            throw new Exception("No Attribute Or Screen Data, Please Use Basic Fragment Shader"); //FLAT LIGHTNING WARNING!
-
-                        if (SelectedShader.manualCamera & SelectedShader.ShaderVertex == null)
-                            throw new Exception("A Vertex Shader Is Required for Manual Camera!");
-
-                        if (SelectedShader.copyAttributes & SelectedShader.vShdrAttr + 3 > SB.stride)
-                            throw new Exception("Cannot have Automatic Copy For Different Amounts of Vertex Attributes!");
-
-                        if (SelectedShader.vShdrAttr > 0 & SelectedShader.ShaderFragmentAdvanced == null)
-                            throw new Exception("The Advanced Fragment Shader is Required for Attributes!");
-                
-                        if (SelectedShader.vShdrAttr >= 0 && SelectedShader.vShdrAttr < 30)
-                            ops.Stride = 3 + SelectedShader.vShdrAttr;
-                        else ops.Stride = SB.stride;
-                    
-                        ops.ReadStride = SB.stride;
-                        ops.FaceStride = 3 * SB.stride;
-
-                        ops.COPY_ATTRIB_MANUAL = !SelectedShader.copyAttributes;
-                        ops.CAMERA_BYPASS = SelectedShader.manualCamera;
-                        ops.HAS_VERTEX_SHADER = SelectedShader.ShaderVertex != null;
-                        ops.VShdr = SelectedShader.ShaderVertex;
-                    
-                        ops.ATTRIBLVL = (int)SelectedShader.sLevel;
-                        ops.attribdata = ops.ATTRIBLVL != 0;
-
-                        if (ops.Stride == 3)
-                            Parallel.For(0, SB.FaceCount, ops.FillFlat);
-                        else
-                            Parallel.For(0, SB.FaceCount, ops.FillFull);
-
-                        if (RequestCopyAfterDraw)
-                        {
-                            CopyQuick(); RequestCopyAfterDraw = false;
-                        }
-                    }
-                }
-                else if (SelectedShader.sType == GLRenderMode.Wireframe)
+                //Wireframe Debug is for debugging only. It doesn't care about 90% of the configuration options
+                if (SelectedShader.sType != GLRenderMode.WireframeDebug)
                 {
-                    if (SelectedShader.sType == GLRenderMode.Wireframe && SelectedShader.sLevel != GLExtraAttributeData.None)
-                        throw new Exception("Wireframe does not yet support extra attribute data. Sorry!");
-
-                    if (SelectedShader.ShaderFragmentBasic != null & SelectedShader.ShaderFragmentAdvanced != null)
-                        throw new Exception("Two separate Fragment Shaders submitted!");
+                    //Check for illegal parameters before drawing.
+                    if (SelectedShader.ShaderFragment == null & SelectedShader.sType != GLRenderMode.TriangleGouraud)
+                        throw new Exception("No Fragment Shader Detected!");
 
                     if (SelectedShader.manualCamera & SelectedShader.ShaderVertex == null)
                         throw new Exception("A Vertex Shader Is Required for Manual Camera!");
 
-                    if (SelectedShader.ShaderFragmentBasic == null & SelectedShader.ShaderFragmentAdvanced == null)
-                        throw new Exception("No Fragment Shader detected!");
+                    if (SelectedShader.copyAttributes & SelectedShader.vShdrAttr + 3 > SB.stride)
+                        throw new Exception("Cannot have Automatic Copy For Different Amounts of Vertex Attributes!");
 
-                    if ( SelectedShader.ShaderFragmentAdvanced == null)
-                        throw new Exception("Wireframe currently only supports Advanced Shader! Sorry!");
+                    //ATTRIBUTE DATA CONFIGURATION
+                    ops.COPY_ATTRIB_MANUAL = !SelectedShader.copyAttributes;
+                    ops.CAMERA_BYPASS = SelectedShader.manualCamera;
+                    ops.HAS_VERTEX_SHADER = SelectedShader.ShaderVertex != null;
+                    ops.ATTRIBLVL = (int)SelectedShader.sLevel;
+                    ops.attribdata = ops.ATTRIBLVL != 0;
 
+                    //SAFE SHADER METHOD POINTERS
+                    ops.FS = SelectedShader.ShaderFragment;
+                    ops.VS = SelectedShader.ShaderVertex;
+                }
 
-                    //problem -> BasicAdvanced Shader
+                // ------------------------------------------------------------------------------------------------------ //
+                // ------------------------------------------------------------------------------------------------------ //
+                // ------------------------------------------------------------------------------------------------------ //
 
+                if (SelectedShader.sType == GLRenderMode.Triangle){
+                    //Warn about performance benefits of GLRenderMode.TriangleFlat
+                    if (SB.stride == 3 && SelectedShader.sLevel == GLExtraAttributeData.None & !ExceptionOverride)
+                        throw new WarningException("There is no need to use GLRenderMode.Triangle. Use GLRenderMode.TriangleFlat for better performance.");
+
+                    //INPUT OVERRIDE SETTINGS
                     if (SelectedShader.vShdrAttr >= 0 && SelectedShader.vShdrAttr < 30)
                         ops.Stride = 3 + SelectedShader.vShdrAttr;
                     else ops.Stride = SB.stride;
 
+                    //DATA IN STRIDE
                     ops.ReadStride = SB.stride;
                     ops.FaceStride = 3 * SB.stride;
 
-                    ops.COPY_ATTRIB_MANUAL = !SelectedShader.copyAttributes;
-                    ops.CAMERA_BYPASS = SelectedShader.manualCamera;
-                    ops.HAS_VERTEX_SHADER = SelectedShader.ShaderVertex != null;
-                    ops.VShdr = SelectedShader.ShaderVertex;
+                    //not sure what this is
+                    if (ops.Stride == 3)
+                        Parallel.For(0, SB.FaceCount, ops.FillFlat);
+                    else
+                        Parallel.For(0, SB.FaceCount, ops.FillFull);
+                }
+                else if (SelectedShader.sType == GLRenderMode.Wireframe)
+                {
+                    if (SelectedShader.sLevel != GLExtraAttributeData.None)
+                        throw new Exception("Wireframe does not yet support extra attribute data. Sorry!");
+                    //FIX THIS ^^^^
 
-                    ops.ATTRIBLVL = (int)SelectedShader.sLevel;
-                    ops.attribdata = ops.ATTRIBLVL != 0;
+                    if (SelectedShader.ShaderVertex != null) //Vertex shader not supported
+                        throw new Exception("no shader vertex");
+
+                    //INPUT OVERRIDE SETTINGS
+                    if (SelectedShader.vShdrAttr >= 0 && SelectedShader.vShdrAttr < 30)
+                        ops.Stride = 3 + SelectedShader.vShdrAttr;
+                    else ops.Stride = SB.stride;
+
+                    //DATA IN STRIDE
+                    ops.ReadStride = SB.stride;
+                    ops.FaceStride = 3 * SB.stride;
+
 
                     Parallel.For(0, SB.FaceCount, ops.WireFrame);
-
-               //     for (int o = 0; o < SB.FaceCount; o++) ops.WireFrame(o);
-
-                    if (RequestCopyAfterDraw)
-                    {
-                        CopyQuick(); RequestCopyAfterDraw = false;
-                    }
                 }
                 else if (SelectedShader.sType == GLRenderMode.TriangleFlat)
                 {
-                    if (SelectedShader.ShaderFragmentBasic != null & SelectedShader.ShaderFragmentAdvanced != null)
-                        throw new Exception("Two separate Fragment Shaders submitted!");
-
-                    if (SelectedShader.ShaderFragmentBasic == null & SelectedShader.ShaderFragmentAdvanced == null)
-                        throw new Exception("No Fragment Shader detected!");
-
-                    if (SelectedShader.ShaderFragmentBasic == null)
-                        throw new Exception("TriangleFlat only supports the basic fragment shader");
+                    if (SelectedShader.sLevel != GLExtraAttributeData.None)
+                        throw new Exception("GLRenderMode.TriangleFlat does not support extra attirbute data. Attribute pointer will be null.");
 
                     if (SelectedShader.vShdrAttr > 0 & !ExceptionOverride)
-                        throw new WarningException("TriangleFlat does not does not load attributes");
+                        throw new WarningException("TriangleFlat does not load attributes");
 
                     if (SB.stride > 3 & SelectedShader.vShdrAttr != 0)
-                        throw new WarningException("TriangleFlat does not does not load attributes");
+                        throw new WarningException("TriangleFlat does not load attributes");
 
-
+                  
+                    
                     ops.Stride = 3;
                     ops.ReadStride = SB.stride;
                     ops.FaceStride = 3 * SB.stride;
 
-                    ops.COPY_ATTRIB_MANUAL = !SelectedShader.copyAttributes;
-                    ops.CAMERA_BYPASS = SelectedShader.manualCamera;
-                    ops.HAS_VERTEX_SHADER = SelectedShader.ShaderVertex != null;
-                    ops.VShdr = SelectedShader.ShaderVertex;
 
-                    ops.ATTRIBLVL = (int)SelectedShader.sLevel;
-                    ops.attribdata = ops.ATTRIBLVL != 0;
 
 
                     Parallel.For(0, SB.FaceCount, ops.FillTrueFlat);
-                    if (RequestCopyAfterDraw)
-                    {
-                        CopyQuick(); RequestCopyAfterDraw = false;
-                    }
                 }
                 else if (SelectedShader.sType == GLRenderMode.TriangleGouraud)
                 {
-                    if (SelectedShader.ShaderFragmentBasic != null | SelectedShader.ShaderFragmentAdvanced != null & !ExceptionOverride)
+                    if (SelectedShader.ShaderFragment != null & !ExceptionOverride)
                         throw new WarningException("Triangle Gouraud Will Ignore Any Fragment Shaders used!");
 
                     if (SelectedShader.ShaderVertex == null)
@@ -344,8 +276,8 @@ namespace renderX2
                 //    if (SB.stride != 6 & !ExceptionOverride)
                 //        throw new WarningException("It is recommended to only have normals as the attributes.");
 
-                    if (SelectedShader.sLevel != GLExtraAttributeData.None & !ExceptionOverride)
-                        throw new WarningException("Gouraud mode cannot provide Extra Attribute Data");
+                    if (SelectedShader.sLevel != GLExtraAttributeData.None)
+                        throw new Exception("Gouraud mode cannot provide Extra Attribute Data");
 
                     if (SelectedShader.copyAttributes)
                         throw new Exception("Attributes cannot be automatically copied for Gouraud mode");
@@ -355,98 +287,84 @@ namespace renderX2
                     ops.ReadStride = SB.stride;
                     ops.FaceStride = 3 * SB.stride;
 
-                    ops.COPY_ATTRIB_MANUAL = !SelectedShader.copyAttributes;
-                    ops.CAMERA_BYPASS = SelectedShader.manualCamera;
-                    ops.HAS_VERTEX_SHADER = SelectedShader.ShaderVertex != null;
-                    ops.VShdr = SelectedShader.ShaderVertex;
 
-                    ops.ATTRIBLVL = (int)SelectedShader.sLevel;
-                    ops.attribdata = ops.ATTRIBLVL != 0;
 
                     Parallel.For(0, SB.FaceCount, ops.FillGouraud);
-                    if (RequestCopyAfterDraw)
-                    {
-                        CopyQuick(); RequestCopyAfterDraw = false;
-                    }
                 }
                 else if (SelectedShader.sType == GLRenderMode.Line)
                 {
-                    if (SelectedShader.ShaderFragmentBasic != null & SelectedShader.ShaderFragmentAdvanced != null)
-                        throw new Exception("Two separate Fragment Shaders submitted!");
-
-                    if (SelectedShader.ShaderFragmentBasic == null & SelectedShader.ShaderFragmentAdvanced == null)
-                        throw new Exception("No Fragment Shader detected!");
-
-                    if (SelectedShader.ShaderFragmentAdvanced == null)
-                        throw new Exception("Line mode requires advanced shader, sorry!");
-
-
                     ops.Stride = SB.stride;
                     ops.FaceStride = 2 * SB.stride;
-                    ops.p = SB.ptr;
-                    ops.bptr = (byte*)DrawingBuffer;
                     ops.ReadStride = SB.stride;
-
-                    ops.COPY_ATTRIB_MANUAL = !SelectedShader.copyAttributes;
-                    ops.CAMERA_BYPASS = SelectedShader.manualCamera;
-                    ops.HAS_VERTEX_SHADER = SelectedShader.ShaderVertex != null;
-                    ops.VShdr = SelectedShader.ShaderVertex;
-
-                    ops.ATTRIBLVL = (int)SelectedShader.sLevel;
-                    ops.attribdata = ops.ATTRIBLVL != 0;
 
                     int b = SB.getifsuspectedline();
                     Parallel.For(0, b, ops.LineMode);
-
-                    if (RequestCopyAfterDraw)
-                    {
-                        CopyQuick();
-                        RequestCopyAfterDraw = false;
-                    }
                 }
                 else if (SelectedShader.sType == GLRenderMode.WireframeDebug)
                 {
-                    ops.Stride = SB.stride;
-                    ops.p = SB.ptr;
-                    ops.bptr = (byte*)DrawingBuffer;
+                    ops.Stride = 3;
 
-                    if (SB.stride != 3)
+                    if (SB.stride != 3) 
                         throw new Exception("Wireframe Debug Does Not Support != 3 Stride");
 
                     Parallel.For(0, SB.FaceCount, ops.WireFrameDebug);
-
-                    if (RequestCopyAfterDraw)
-                    {
-                        CopyQuick();
-                        RequestCopyAfterDraw = false;
-                    }
                 }
+
+                if (RequestCopyAfterDraw)
+                {
+                    CopyQuick();
+                    RequestCopyAfterDraw = false;
+                }
+            }
+        }
+
+        public unsafe void Draw(GLBuffer TargetBuffer, Shader TargetShader)
+        {
+            lock (ThreadLock)
+            {
+                GLBuffer oldBuffer = SB;
+                Shader oldShdr = SelectedShader;
+
+                SelectBuffer(TargetBuffer);
+                SelectShader(TargetShader);
+
+                Draw();
+
+                SelectBuffer(oldBuffer);
+                SelectShader(oldShdr);
+
             }
         }
 
         public unsafe void Pass()
         {
-            throw new Exception("Unfortunately Post-Processing Effects Have Been Temporarily Disabled Due The A Memory Corruption Issue!");
+            lock (ThreadLock)
+            {
+                if (SelectedShader == null)
+                    throw new Exception("No Shader Selected, Cannot Draw!");
 
-            if (SelectedShader == null)
-                throw new Exception("No Shader Selected, Cannot Draw!");
+                if (!SelectedShader.isPost)
+                    throw new Exception("This Function takes a post processing shader!");
 
-            if (!SelectedShader.isPost)
-                throw new Exception("This Function takes a post processing shader!");
+                if (SelectedShader.ShaderPass == null)
+                    throw new Exception("No post processing delegate attached!");
 
-            if (SelectedShader.ShaderPass == null)
-                throw new Exception("No post processing delegate attached!");
+                b = SelectedShader.ShaderPass;
+                addr = (byte*)DrawingBuffer;
 
-            Shader.FragmentPass b = SelectedShader.ShaderPass;
-            byte* addr = (byte*)DrawingBuffer;
+                Parallel.For(0, RenderHeight, delegatetese);
+            } 
+        }
 
-            int W = SFB.Width;
-            Parallel.For(0, RenderWidth * RenderHeight, i => {
-                int X = i % W;
-                int Y = i / W;
+        Shader.FragmentPass b;
+        byte* addr;
 
-                b(addr + i * 4, X, Y);
-            });
+        unsafe void delegatetese(int i)
+        {
+            for (int o = 0; o < RenderWidth; o++)
+            {
+                b(addr + i * RenderWidth * 4 + o * 4, o, i);
+            }
         }
 
         public void Blit()
@@ -462,49 +380,12 @@ namespace renderX2
 
         public unsafe void Clear(byte R, byte G, byte B)
         {
-            byte _B = B;
-            byte _G = G;
-            byte _R = R;
-
             lock (ThreadLock)
             {
-                byte* p = (byte*)DrawingBuffer;
-                for (int i = (RenderWidth * RenderHeight) - 1; i >= 0; i--)
-                {
-                    *(p + i * 4) = B;
-                    *(p + i * 4 + 1) = G;
-                    *(p + i * 4 + 2) = R;
-                }
-            }
-        }
+                _iClear = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
+                _iptr = (int*)DrawingBuffer;
 
-        public unsafe void ClearFaster(byte R, byte G, byte B)
-        {
-             _B = B;
-             _G = G;
-             _R = R;
-
-            rws = RenderWidth * 4;
-            int pv = RenderHeight;
-          
-            lock (ThreadLock)
-            {
-                p = (byte*)DrawingBuffer;
-                Parallel.For(0, pv, ClearLambda);
-            }
-        }
-
-        byte _B, _G, _R;
-        int rws;
-        byte* p;
-        void ClearLambda(int i)
-        {
-            for (int h = rws - 4; h >= 0; h -= 4)
-            {
-                int a = i * rws + h;
-                *(p + a) = _B;
-                *(p + a + 1) = _G;
-                *(p + a + 2) = _R;
+                Parallel.For(0, RenderHeight, _2D_Clear);
             }
         }
 
@@ -566,6 +447,8 @@ namespace renderX2
 
         public void Line2D(int x1, int y1, int x2, int y2, byte R, byte G, byte B)
         {
+            ops.bptr = (byte*)DrawingBuffer;
+            ops.dptr = (float*)DepthBuffer;
             ops.DrawLine(x1, y1, x2, y2, R, G, B);
         }
 
@@ -578,41 +461,22 @@ namespace renderX2
                 ops.dptr = (float*)DepthBuffer;
 
                 ops.Stride = 3;
-                byte oB, oG, oR;
+                int oi = ops.lValue;
+                float oV = ops.zoffset;
 
-                oB = ops.lB; oG = ops.lG; oR = ops.lR;
-                ops.lB = B; ops.lG = G; ops.lR = R; 
+                ops.zoffset = 0;
+                ops.lValue = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
 
                 ops.DrawLine3D(From, To);
                 ops.Stride = sD;
 
-                ops.lB = oB; ops.lG = oG; ops.lR = oR; 
-
+                ops.lValue = oi;
+                ops.zoffset = oV;
 
             }
         }
 
-        void CopyQuick()
-        {
-            memcpy(CD.RGB_ptr, DrawingBuffer, (UIntPtr)(RenderHeight * RenderWidth * 4));
-            memcpy(CD.Z_ptr, DepthBuffer, (UIntPtr)(RenderHeight * RenderWidth * 4));
-        }
 
-        void CopyQuickReverse()
-        {
-            memcpy(DrawingBuffer, CD.RGB_ptr, (UIntPtr)(RenderHeight * RenderWidth * 4));
-            memcpy(DepthBuffer, CD.Z_ptr, (UIntPtr)(RenderHeight * RenderWidth * 4));
-        }
-
-        void CopyQuickReverseDepthTest()
-        {
-            Parallel.For(0, RenderHeight, ops.FastCompare);
-        }
-
-        void CopyQuickSplitLoop()
-        {
-            Parallel.For(0, RenderHeight, ops.FastCopy);
-        }
 
         internal void GetHWNDandDC(out IntPtr DC, out IntPtr HWND)
         {
@@ -802,7 +666,7 @@ namespace renderX2
             Thread.Sleep(Timeout.Infinite);
         }
 
-        public unsafe IntPtr GET_ADDR()
+        public unsafe IntPtr GetAddress()
         {
             return (IntPtr)ptr;
         }
@@ -810,16 +674,13 @@ namespace renderX2
 
     public unsafe class Shader
     {
-        public delegate void ShaderFillB(byte* BGR_Buffer, int FaceIndex);
-        public delegate void ShaderFillA(byte* BGR_Buffer, float* Attributes, int FaceIndex);
+        public delegate void FragmentOperation(byte* BGR_Buffer, float* Attributes, int FaceIndex);
         public delegate void VertexOperation(float* XYZandAttributes_OUT, float* XYZandAttributes_IN, int FaceIndex);
         public delegate void FragmentPass(byte* BGR_Buffer, int posX, int posY);
 
-        internal ShaderFillB ShaderFragmentBasic;
-        internal ShaderFillA ShaderFragmentAdvanced;
-        internal FragmentPass ShaderPass;
-
+        internal FragmentOperation ShaderFragment;
         internal VertexOperation ShaderVertex;
+        internal FragmentPass ShaderPass;
 
         internal int vShdrAttr = -1;
 
@@ -830,19 +691,15 @@ namespace renderX2
         internal bool copyAttributes = true;
         internal bool isPost = false;
 
-        public Shader(VertexOperation VertexShader, ShaderFillA FragmentShader, GLRenderMode ShaderType, GLExtraAttributeData Data = GLExtraAttributeData.None)
+        public Shader(VertexOperation VertexShader, FragmentOperation FragmentShader, GLRenderMode ShaderType, GLExtraAttributeData Data = GLExtraAttributeData.None)
         {
+            if (Data != GLExtraAttributeData.None & ShaderType == GLRenderMode.TriangleFlat)
+                throw new Exception("Triangle Flat does not support ExtraAttributeData. Attribute pointer will be null.");
+
             ShaderVertex = VertexShader;
-            ShaderFragmentAdvanced = FragmentShader;
+            ShaderFragment = FragmentShader;
             sType = ShaderType;
             sLevel = Data;
-        }
-
-        public Shader(VertexOperation VertexShader, ShaderFillB FragmentShader, GLRenderMode ShaderType)
-        {
-            ShaderVertex = VertexShader;
-            ShaderFragmentBasic = FragmentShader;
-            sType = ShaderType;
         }
 
         public void SetOverrideAttributeCount(int StridePass)
@@ -863,6 +720,17 @@ namespace renderX2
             copyAttributes = !value;
         }
 
+        public void SetScratchSpaceSize(int Value)
+        {
+            if (Value < 0)
+                throw new Exception("Scratch space cannot be less than 0");
+
+            if (Value > 20)
+                throw new Exception("Scratch space cannot be bigger than 20");
+
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// Creates A Post Procesing Shader. Can be used for SSAO, Bloom, Screenspace reflections etc
         /// </summary>
@@ -871,6 +739,55 @@ namespace renderX2
         {
             isPost = true;
             ShaderPass = POST_PROCESS_PASS;
+        }
+
+        public string GetFragmentAttributePreview(GLBuffer TargetBuffer)
+        {
+            string str = "";
+
+            if (vShdrAttr == -1)
+                for (int i = 0; i < TargetBuffer.stride - 3; i++)
+                {
+                    str += "Attributes[" + i + "]: Vertex Data\n";
+                }
+            else if (vShdrAttr != 0)
+                for (int i = 0; i < TargetBuffer.stride - 3; i++)
+                {
+                    str += "Attributes[" + i + "]: Custom Vertex Data\n";
+                }
+                
+
+            int ATTRIBLVL = (int)sLevel;
+            int v = TargetBuffer.stride - 3;
+
+
+            if (ATTRIBLVL == 3)
+            {
+                str += "Attributes[" + (v + 0) + "]: Camera Space X Position\n";
+                str += "Attributes[" + (v + 1) + "]: Camera Space Y Position\n";
+                str += "Attributes[" + (v + 2) + "]: Camera Space Z Position\n";
+            }
+            else if (ATTRIBLVL == 5)
+            {
+                str += "Attributes[" + (v + 0) + "]: Camera Space X Position\n";
+                str += "Attributes[" + (v + 1) + "]: Camera Space Y Position\n";
+                str += "Attributes[" + (v + 2) + "]: Camera Space Z Position\n";
+                str += "Attributes[" + (v + 3) + "]: Screen Space X Position\n";
+                str += "Attributes[" + (v + 4) + "]: Screen Space Y Position\n";
+
+            }
+            else if (ATTRIBLVL == 2)
+            {
+                str += "Attributes[" + (v + 0) + "]: Screen Space X Position\n";
+                str += "Attributes[" + (v + 1) + "]: Screen Space Y Position\n";
+            }
+            else if (ATTRIBLVL == 1)
+            {
+                str += "Attributes[" + (v + 0) + "]: Camera Space Z Position\n";
+            }
+
+
+            return str;
         }
     }
 

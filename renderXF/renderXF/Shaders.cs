@@ -15,31 +15,27 @@ namespace renderXF
 {
     public unsafe partial class Form1 : Form
     {
-     //   Vector3 objColor = new Vector3(79f / 255f, 255f / 255f, 79f / 255f);
+        #region LightningData
         Vector3 objColor = new Vector3(255f / 255f, 79f / 255f, 79f / 255f);
-
-
-        Vector3 scale = new Vector3(20, 0, 20);
-
         Vector3 lightColor = new Vector3(0.8f, 0.8f, 0.8f);
+
         float ambientStrength = 0.05f;
         float specularStrength = 0.7f;
 
-        float cdist = 40 * 2;
-        Vector3 lPos;
-
-        Vector3 rotLpos;
+        Vector3 lightPositionInCameraSpace;
         Vector3 ambient;
-        Vector3 lightDir;
-        Vector3 cLoc;
 
-        Vector3 CI_RAngle = new Vector3(0, 0, 0);
+        unsafe void PrepareLightningData()
+        {
+            lightPositionInCameraSpace = GL.RotateToCameraSpace(lightPosition);
+            centerInCameraSpace = GL.RotateToCameraSpace(new Vector3(0, 0, 0));
+            ambient = ambientStrength * lightColor;
+        }
 
-        bool SMPLT = false;
-        float* CIC_Normals;
-        float* CIP_Normals;
 
-        Vector3 CI_Color = new Vector3(1, 1, 1);
+        #endregion
+
+
 
         unsafe void SSR_Fragment(byte* BGR, float* Normals, int FaceIndex)
         { 
@@ -47,21 +43,29 @@ namespace renderXF
         }
 
         unsafe void SSR_Pass(byte* BGR, int posX, int posY)
-        { 
-            
-        }
-
-        unsafe void PrepareLightningData()
         {
-            rotLpos = GL.RotateToCameraSpace(lightPosition);
-            lPos = lightPosition;
-            ambient = ambientStrength * lightColor;
-            lightDir = Vector3.Normalize(lPos);
-            cLoc = GL.RotateToCameraSpace(new Vector3(0, 0, 0));
+            byte r = (byte)((posX / 1024f) * 255f);
+            byte g = (byte)((posY / 768f) * 255f);
+
+            BGR[0] = r;
+            BGR[1] = g;
+            //BGR[2] = 255;
         }
 
+        unsafe void VignettePass(byte* BGR, int posX, int posY)
+        {
+            float X = (posX / 512f) - 1f;
+            float Y = (posY / 384f) - 1f;
 
-        unsafe void StandardShader_Shader(byte* tA, float* test, int InstanceNumber)
+            X = 1f - 0.5f * X * X;
+            Y = X * (1f - 0.5f * Y * Y);
+
+            BGR[0] = (byte)(BGR[0] * Y);
+            BGR[1] = (byte)(BGR[1] * Y);
+            BGR[2] = (byte)(BGR[2] * Y);
+        }
+    
+        unsafe void UV_FragmentShader(byte* tA, float* test, int InstanceNumber)
         {
             //  tA[0] = (byte)(127.5f + 127.5f * nbAddr[InstanceNumber * 3]);
             //  tA[1] = (byte)(127.5f + 127.5f * nbAddr[InstanceNumber * 3 + 1]);
@@ -89,25 +93,16 @@ namespace renderXF
 
 
           //  return;
-            int x = (int)(renderX.Clamp01(test[0]) * (float)(myTexture.Width - 1));
-            int y = (int)(renderX.Clamp01(test[1]) * (float)(myTexture.Height - 1));
+          //  int x = (int)(renderX.Clamp01(test[0]) * (float)(myTexture.Width - 1));
+         //   int y = (int)(renderX.Clamp01(test[1]) * (float)(myTexture.Height - 1));
 
-            tA[0] = *(textaddr + (y * myTexture.WidthStride + (x * 4) + 0));
-            tA[1] = *(textaddr + (y * myTexture.WidthStride + (x * 4) + 1));
-            tA[2] = *(textaddr + (y * myTexture.WidthStride + (x * 4) + 2));
+        //    tA[0] = *(textaddr + (y * myTexture.WidthStride + (x * 4) + 0));
+        //    tA[1] = *(textaddr + (y * myTexture.WidthStride + (x * 4) + 1));
+        //    tA[2] = *(textaddr + (y * myTexture.WidthStride + (x * 4) + 2));
         }
 
-        unsafe void ScaleIT_VS(float* OUT, float* IN, int Index)
+        unsafe void BasicShader(byte* BGR, float* Attributes, int FaceIndex)
         {
-            OUT[0] = IN[0] * 10f;
-            OUT[1] = IN[1] * 10f;
-            OUT[2] = IN[2] * 10f;
-
-        }
-
-        unsafe void BasicShader(byte* BGR, int FaceIndex)
-        {
-           // Vector3 iNormals = new Vector3(attributes[0], attributes[1], attributes[2]);
             Vector3 iNormals = new Vector3(nbAddr[FaceIndex * 3], nbAddr[FaceIndex * 3 + 1], nbAddr[FaceIndex * 3 + 2]);
             iNormals = GL.RotateCameraSpace(iNormals);
 
@@ -118,7 +113,7 @@ namespace renderXF
             BGR[2] = col;    
         }
 
-        unsafe void AltShader(byte* BGR, float* attributes, int FaceIndex)
+        unsafe void NormalFS(byte* BGR, float* attributes, int FaceIndex)
         {
          //   BGR[0] = (byte)(127.5f + 127.5f * nbAddr[FaceIndex * 3]);
          //   BGR[1] = (byte)(127.5f + 127.5f * nbAddr[FaceIndex * 3 + 1]);
@@ -130,7 +125,7 @@ namespace renderXF
             BGR[2] = (byte)(127.5f + 127.5f * attributes[2]);   
         }
 
-        unsafe void FuncShader(byte* BGR, float* attributes, int FaceIndex)
+        unsafe void PhongFS(byte* BGR, float* attributes, int FaceIndex)
         {
             Vector3 fragPos = new Vector3(attributes[3], attributes[4], attributes[5]);
             Vector3 iNormals = new Vector3(attributes[0], attributes[1], attributes[2]);
@@ -140,7 +135,7 @@ namespace renderXF
       //      Vector3 lpos = GL.RotateToCameraSpace(lightPosition);
 
             Vector3 norm = Vector3.Normalize(iNormals);
-            Vector3 lightDir = Vector3.Normalize(rotLpos - fragPos);
+            Vector3 lightDir = Vector3.Normalize(lightPositionInCameraSpace - fragPos);
             float diff = Math.Max(Vector3.Dot(norm, lightDir), 0f);
             Vector3 diffuse = diff * lightColor;
 
@@ -168,7 +163,7 @@ namespace renderXF
          //   Vector3 lpos = GL.RotateToCameraSpace(lightPosition);
 
             Vector3 norm = Vector3.Normalize(iNormals);
-            Vector3 lightDir = Vector3.Normalize(lPos - fragPos);
+            Vector3 lightDir = Vector3.Normalize(lightPosition - fragPos);
             float diff = Math.Max(Vector3.Dot(norm, lightDir), 0f);
             Vector3 diffuse = diff * lightColor;
 
@@ -190,38 +185,38 @@ namespace renderXF
             OUT[5] = (result.x * 255f);
         }
 
+
+        #region BaseObjects
+
+        Vector3 GridScale = new Vector3(20, 0, 20);
+        Vector3 centerInCameraSpace; // (0, 0, 0) in camera space
+        float cdist = 40 * 2; //<- Grid related
+
+
+        //Camera Indicator (top right thing) Data
+        Vector3 CI_RAngle = new Vector3(0, 0, 0);
+        Vector3 CI_Color = new Vector3(1, 1, 1);
+
+        bool SMPLT = false;
+        float* CIC_Normals;
+        float* CIP_Normals;
+
+
         unsafe void GridShaderVS(float* OUT, float* IN, int FaceIndex)
         {
-            OUT[0] = (IN[0] - 4.5f) * scale.x;
-            OUT[1] = (IN[1] - 4.5f) * scale.y;
-            OUT[2] = (IN[2] - 4.5f) * scale.z;
+            OUT[0] = (IN[0] - 4.5f) * GridScale.x;
+            OUT[1] = (IN[1] - 4.5f) * GridScale.y;
+            OUT[2] = (IN[2] - 4.5f) * GridScale.z;
         }
-
         unsafe void GridShaderFS(byte* BGR, float* attributes, int FaceIndex)
         {
-          //  BGR[0] = (byte)((BGR[0] + 255) / 2);
-          //  BGR[1] = (byte)((BGR[1] + 255) / 2);
-          //  BGR[2] = (byte)((BGR[2] + 255) / 2);
             Vector3 a = new Vector3(attributes[0], attributes[1], attributes[2]);
 
-
-            float d = Vector3.Distance(cLoc, a);
+            float d = Vector3.Distance(centerInCameraSpace, a);
 
             BGR[0] = (byte)(255f - 255f * Clamp01(d / cdist));
             BGR[1] = (byte)(255f - 255f * Clamp01(d / cdist));
             BGR[2] = (byte)(255f - 255f * Clamp01(d / cdist));
-            
-          //  BGR[0] = (byte)((255f / 1920f) * attributes[0]);
-          //  BGR[1] = (byte)((255f / 1080f) * attributes[1]);
-        //    BGR[2] = 0;
-
-        }
-
-        unsafe void WFrameShader(byte* BGR, float* attributes, int FaceIndex)
-        {
-            BGR[0] = 255;
-            BGR[1] = 255;
-            BGR[2] = 255;
         }
 
         unsafe void CIVS(float* OUT, float* IN, int FaceIndex)
@@ -256,7 +251,6 @@ namespace renderXF
 
             OUT[2] = OUT[2] + 400;    
         }
-
         unsafe void CIFS(byte* BGR, int FaceIndex)
         {
             Vector3 iNormals = new Vector3(CIC_Normals[FaceIndex * 3], CIC_Normals[FaceIndex * 3 + 1], CIC_Normals[FaceIndex * 3 + 2]);
@@ -269,32 +263,12 @@ namespace renderXF
             BGR[2] = col;   
         }
 
-        unsafe void ObjectVS(float* OUT, float* IN, int FaceIndex)
-        {
-            OUT[0] = IN[0];
-            OUT[1] = IN[1];
-            OUT[2] = IN[2] - 10;
-        }
-
-        unsafe void RotateVS(float* OUT, float* IN, int FaceIndex)
-        {
-            //renderX.Rotate(IN[0], IN[1], IN[2], Vector3.Sin(angle), Vector3.Cos(angle), out OUT[0], out OUT[1], out OUT[2]);
-        }
-
-        unsafe void StandardShader_Flat(byte* BGR, int FaceIndex)
-        {
-            BGR[0] = (byte)(127.5f + 127.5f * nbAddr[FaceIndex * 3]);
-            BGR[1] = (byte)(127.5f + 127.5f * nbAddr[FaceIndex * 3 + 1]);
-            BGR[2] = (byte)(127.5f + 127.5f * nbAddr[FaceIndex * 3 + 2]);
-        }
-
-        unsafe void CubeFS(byte* BGR, int FadeIndex)
+        unsafe void CubeFS(byte* BGR, float* attributes, int FadeIndex)
         {
             BGR[0] = 255;
             BGR[1] = 255;
             BGR[2] = 255;
         }
-
         unsafe void CubeVS(float* OUT, float* IN, int FaceIndex)
         {
             OUT[0] = IN[0] * 50f + lightPosition.x;
@@ -302,6 +276,8 @@ namespace renderXF
             OUT[2] = IN[2] * 50f + lightPosition.z;
 
         }
+
+        #endregion
 
         public byte Clamp0255(int val)
         {

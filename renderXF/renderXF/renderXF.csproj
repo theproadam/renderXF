@@ -57,7 +57,10 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="renderX\GeometryPath.cs" />
+    <Compile Include="renderX\GeometryPath\GeometryPath.cs" />
+    <Compile Include="renderX\GeometryPath\GeometryPath_Fill.cs" />
+    <Compile Include="renderX\GeometryPath\GeometryPath_Line.cs" />
+    <Compile Include="renderX\renderX_2D.cs" />
     <Compile Include="renderX\renderX_Core.cs" />
     <Compile Include="renderX\renderX_Plugins.cs" />
     <Compile Include="renderX\renderX_Variables.cs" />

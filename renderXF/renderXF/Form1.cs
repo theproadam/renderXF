@@ -25,16 +25,11 @@ namespace renderXF
 
         RenderThread RT;
 
-        RenderMatrix renderMatrix;
-        GLTexture myTexture;
-
         GLBuffer VertexBuffer;
         GLBuffer NormalBuffer;
 
         GLBuffer CICVertex, CICNormals, CIPVertex, CIPNormals;
         GLBuffer CubeVBO;
-
-        GLBuffer FaceBuffer;
 
         Shader LineShader;
         GLBuffer LineBuffer;
@@ -46,6 +41,7 @@ namespace renderXF
         Shader SSRShader;
         Shader SSRShaderPost;
 
+        Shader VignetteShader;
 
         GLCachedBuffer cachedBuffer;
         Stopwatch sw = new Stopwatch();
@@ -69,7 +65,7 @@ namespace renderXF
 
         bool fcull = false;
         float* nbAddr;
-        byte* textaddr;
+
 
         #region FOV/Matrix Lerp
         float TargetFOV = 90f;
@@ -80,9 +76,9 @@ namespace renderXF
         #endregion
 
         bool FBCaching = false;
-        RenderMatrix TargetMatrix;
 
-        Bitmap infoBitmap = new Bitmap(400, 300, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+
+        Bitmap infoBitmap = new Bitmap(200, 200, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
 
         #region DeltaTimes
         float deltaTime;
@@ -111,7 +107,7 @@ namespace renderXF
             this.Size = new Size(StartupForm.W + WindowWidth, StartupForm.H + WindowHeight);
             this.SetStyle(ControlStyles.StandardDoubleClick, false);
             FBCaching = StartupForm.NormalsInterpolated;
-
+            this.MouseWheel += Form1_MouseWheel;
             #endregion
 
             #region FullscreenSettings
@@ -150,6 +146,7 @@ namespace renderXF
            // vertexpoints = STLImporter.AverageUpFaceNormalsAndOutputVertexBuffer(Importer.AllTriangles, 45);
             NormalBuffer = new GLBuffer(normalBuffer, 3, MemoryLocation.Heap);
             VertexBuffer = new GLBuffer(vertexpoints, 3, MemoryLocation.Heap);
+            nbAddr = (float*)NormalBuffer.GetAddress();
             vertexpoints = null;
 
             #region CubeObject
@@ -158,13 +155,11 @@ namespace renderXF
             cubeShader.SetOverrideAttributeCount(0);
             #endregion
 
-            nbAddr = (float*)NormalBuffer.GET_ADDR();
-
-            myTexture = new GLTexture("container2.png", MemoryLocation.Heap);
-            textaddr = (byte*)myTexture.GET_ADDR();
-
             SSRShader = new Shader(null, SSR_Fragment, GLRenderMode.Triangle, GLExtraAttributeData.XYZ_XY_Both);
+
+            VignetteShader = new Shader(VignettePass);
             SSRShaderPost = new Shader(SSR_Pass);
+
 
             #region ScreenGrid
             float[] vpoints = new float[]{
@@ -196,7 +191,7 @@ namespace renderXF
             LineBuffer = new GLBuffer(vpoints, 3, MemoryLocation.Heap);
             LineShader = new Shader(GridShaderVS, GridShaderFS, GLRenderMode.Line, GLExtraAttributeData.XYZ_CameraSpace);
             
-
+            
             #region CameraIndicator
             CameraIndicator = new Shader(CIVS, null, GLRenderMode.TriangleGouraud);
             CameraIndicator.SetOverrideCameraTransform(true);
@@ -210,8 +205,8 @@ namespace renderXF
             CIPVertex = new GLBuffer(renderX.PrimitiveTypes.CMS(), 3, MemoryLocation.Heap);
             CIPNormals = new GLBuffer(renderX.PrimitiveTypes.CMSNormals(), 3, MemoryLocation.Heap);
 
-            CIC_Normals = (float*)CICNormals.GET_ADDR();
-            CIP_Normals = (float*)CIPNormals.GET_ADDR();
+            CIC_Normals = (float*)CICNormals.GetAddress();
+            CIP_Normals = (float*)CIPNormals.GetAddress();
             #endregion
 
             GL = new renderX(StartupForm.W, StartupForm.H, this.Handle);
@@ -219,38 +214,30 @@ namespace renderXF
 
             MiniGL = new renderX(130, 128);
             #region MiniGL
-            MiniGL.SetMatrix(RenderMatrix.CreatePerspectiveMatrix(90));
+            MiniGL.SetMatrixData(90, 10);
             MiniGL.SelectShader(CameraIndicator);
             MiniGL.SetFaceCulling(true, false);
             #endregion
-            
-            this.MouseWheel += Form1_MouseWheel;
-            StandardShader = new Shader(null, BasicShader, GLRenderMode.TriangleFlat); //test triangle vs triangle flat
 
-            
+            StandardShader = new Shader(null, BasicShader, GLRenderMode.TriangleFlat);
+
+           // Debug.WriteLine(StandardShader.GetFragmentAttributePreview(CubeVBO));
 
             RT = new RenderThread(144);
             RT.RenderFrame += RT_RenderFrame;
            
             GL.SelectShader(StandardShader);
-            GL.SetMatrix(renderMatrix);
+            GL.SetMatrixData(90, 10);
 
             MiniGL.InitializeClickBuffer();
             MiniGL.SetClickBufferWrite(true);
 
             cachedBuffer = new GLCachedBuffer(GL);
 
-            GL.SetDebugWireFrameColor(0, 0, 255);
-        //    GL.SetLinkedWireframe(true, 255, 255, 255);
+       
 
-            Debug.WriteLine("PolyCount: " + Importer.TriangleCount.ToString());
-
-            BitmapUtility.PixelFormatOverride = true;
-
-            
             GL.SetWireFrameOFFSET(-0.1f);
             GL.SetFaceCulling(true, false);
-            GL.FarZ = 100000;
             RT.Start();
         }
 
@@ -379,7 +366,10 @@ namespace renderXF
             GL.ForceCameraPosition(cameraPosition);
             
             if (Math.Abs(CMatrix - TMatrix) > 0.001f) CMatrix = renderX.Lerp(CMatrix, TMatrix, 0.1f * deltaTimeAdjusted); else CMatrix = TMatrix;           
-            GL.SetMatrixData(90, 20 * 2 + 40, CMatrix);
+           // GL.SetMatrixData(90, 20 * 2 + 40, CMatrix);
+
+            GL.SetMatrixData(90, 20, CMatrix);
+
             MiniGL.SetMatrixData(90, 350, CMatrix);
 
             PrepareLightningData();
@@ -391,7 +381,8 @@ namespace renderXF
 
             ProcessCameraIndicator();
 
-            GL.Clear();
+
+            GL.Clear(51, 153, 255);
             GL.SelectShader(StandardShader);
             GL.SelectBuffer(VertexBuffer);
 
@@ -402,30 +393,47 @@ namespace renderXF
                 readyCache = true;
                 y = false;
             }
-             
-            
+
+
             sw.Start();
-            if (readyCache) GL.CopyFromCache(cachedBuffer, true, false);  else GL.Draw();
+            if (readyCache) GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoop);  else GL.Draw();
             sw.Stop();
+            
 
-            GL.SelectShader(LineShader);
-            GL.SelectBuffer(LineBuffer);
-            GL.Draw();
+            GL.Draw(LineBuffer, LineShader);
+            GL.Draw(CubeVBO, cubeShader);
 
-            GL.SelectShader(cubeShader);
-            GL.SelectBuffer(CubeVBO);
-            GL.Draw();
+            
 
-             
+         //   GL.SelectShader(SSRShaderPost);
+         //   GL.Pass();
+
+
+
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(1000000, 0, 0), 255, 0, 0);
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(0, 1000000, 0), 0, 255, 0);
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(0, 0, 1000000), 0, 0, 255);
-           
+
+            GL.SelectShader(VignetteShader);
+
+
+          //  sw.Start();
+          //  if (fcull) GL.Pass();
+         //   else GL.VignettePass();
+
+         //   sw.Stop();
+
             MiniGL.BlitInto(GL, GL.RenderWidth - 130, GL.RenderHeight - 128, Color.FromArgb(255, 0, 0, 0));
+
+         //   GL.BlitInto(infoBitmap, new Rectangle(0, 0, 200, 200)); 
+
+         //   using (Graphics g = Graphics.FromImage(infoBitmap))
+        //        g.DrawString("My String", this.Font, Brushes.Black, 0, 0);
+
+         //   GL.BlitFrom(infoBitmap, new Rectangle(0, 0, 40, 40), 0, 0);
 
             GL.Blit();
 
-          // // this.Invoke((Action)delegate() { this.Text = (1000f / sw.Elapsed.TotalMilliseconds) + " FPS"; });
           //  this.Invoke((Action)delegate() { this.Text = (sw.Elapsed.TotalMilliseconds) + " ms"; });
             this.Invoke((Action)delegate() { this.Text = (1000f / deltaTime) + " FPS, DrawTime: " + sw.Elapsed.TotalMilliseconds + "ms"; });
 
@@ -475,13 +483,6 @@ namespace renderXF
                 }
                 else if (YI == 4) //WHITE
                 {
-                  //  TargetPosition = new Vector3(0, 0, 0);
-                   // TargetRotation = new Vector3(0, 0, 0);
-                    if (TargetMatrix.isOrthographic)
-                        TargetMatrix = RenderMatrix.CreatePerspectiveMatrix(90);
-                    else
-                        TargetMatrix = RenderMatrix.CreateOrthographicMatrix(100);
-
                     if (TMatrix == 1f)
                         TMatrix = 0f;
                     else
@@ -626,8 +627,8 @@ namespace renderXF
                     if (NormalBuffer != null)
                         NormalBuffer.Dispose();
 
-                    if (myTexture != null)
-                        myTexture.Dispose();
+                  //  if (myTexture != null)
+                   //     myTexture.Dispose();
 
                 }
                
