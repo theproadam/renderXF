@@ -12,7 +12,7 @@ This software renderer is primarily focused on CAD thanks to its buffer caching 
 - Partially programmable vertex shader
 - Built in camera transforms
 - Hardcoded performance features
-- Screenspace shaders (WIP)
+- Screenspace shaders
 - Direct blit (No bitmaps required)
 - GDI+ Interoperability (blit bitmaps onto the drawbuffer)
 - Draw and Depth Buffer caching
