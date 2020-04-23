@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
@@ -20,20 +21,28 @@ namespace renderXF
             InitializeComponent();
         }
 
+        //Essentials
         renderX GL;
-        renderX MiniGL;
-
         RenderThread RT;
+        Stopwatch sw = new Stopwatch();
 
+        GLFrameBuffer Vignette_Buffer;
+        GLFrameBuffer SSReflection_Buffer;
+
+        #region GLBuffers
         GLBuffer VertexBuffer;
         GLBuffer NormalBuffer;
+        float* nbAddr;
 
         GLBuffer CICVertex, CICNormals, CIPVertex, CIPNormals;
         GLBuffer CubeVBO;
 
-        Shader LineShader;
-        GLBuffer LineBuffer;
+        GLCubemap Skybox;
 
+        GLBuffer LineBuffer;
+        #endregion
+
+        #region Shaders
         Shader CameraIndicator;
         Shader StandardShader;
         Shader cubeShader;
@@ -43,15 +52,45 @@ namespace renderXF
 
         Shader VignetteShader;
 
-        GLCachedBuffer cachedBuffer;
-        Stopwatch sw = new Stopwatch();
+        Shader LineShader;
+        #endregion
 
+        #region BufferCaching
+        bool FBCaching = false;
+        GLCachedBuffer cachedBuffer;
+
+        bool requestHome = false;
+        bool readyCache = false;
+        #endregion
+
+        #region LiveSettings
         Vector3 ModelCenter;
         float DistanceCenter;
+        bool fcull = false;
+        Vector3 lightPosition = new Vector3(0, 0, 0);
+
+        bool requestClick = false;
+        int rcX, rcY;
+
+        renderX MiniGL;
+        float tick = 0;
+
+        Bitmap infoBitmap = new Bitmap(200, 200, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+        #endregion
+
+        #region PositionAndRotationVectors
 
         Vector3 TargetPosition;
         Vector3 TargetRotation;
 
+        Vector3 cameraRotation = new Vector3(0, 0, 0);
+        Vector3 cameraPosition = new Vector3(0, 0, -50);
+
+        Vector3 lcP = new Vector3(0, 0, 0);
+        Vector3 lcR = new Vector3(0, 0, 0);
+
+        #endregion
+        
         #region Inputs
         bool CursorHook = false;
         bool mmbdown = false;
@@ -63,10 +102,6 @@ namespace renderXF
         int MMBDeltaX, MMBDeltaY;
         #endregion
 
-        bool fcull = false;
-        float* nbAddr;
-
-
         #region FOV/Matrix Lerp
         float TargetFOV = 90f;
         float CurrentFOV = 90f;
@@ -74,11 +109,6 @@ namespace renderXF
         float TMatrix = 0;
         float CMatrix = 0;
         #endregion
-
-        bool FBCaching = false;
-
-
-        Bitmap infoBitmap = new Bitmap(200, 200, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
 
         #region DeltaTimes
         float deltaTime;
@@ -88,10 +118,11 @@ namespace renderXF
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            #region StartupWindow
             StartupForm StartForm = new StartupForm(Environment.GetCommandLineArgs());
             StartForm.ShowDialog();
            
-            #region StartupWindow
+
             if (StartupForm.ApplicationTerminated)
             {
                 this.Close();
@@ -120,8 +151,9 @@ namespace renderXF
             }
             #endregion
 
+            #region VertexBufferInitialization
             STLImporter Importer = new STLImporter(StartupForm.FilePath);
-            #region VertexBufferInit
+
             float[] vertexpoints = new float[Importer.AllTriangles.Length * 3 * 3];
             float[] normalBuffer = new float[Importer.AllTriangles.Length * 3];
             for (int i = 0; i < Importer.AllTriangles.Length; i++)
@@ -142,12 +174,20 @@ namespace renderXF
             #endregion
 
             ModelCenter = CalculateCenterOfModel(ref vertexpoints, out DistanceCenter);
+       //     vertexpoints = STLImporter.AverageUpFaceNormalsAndOutputVertexBuffer(Importer.AllTriangles, 45);
 
-           // vertexpoints = STLImporter.AverageUpFaceNormalsAndOutputVertexBuffer(Importer.AllTriangles, 45);
             NormalBuffer = new GLBuffer(normalBuffer, 3, MemoryLocation.Heap);
             VertexBuffer = new GLBuffer(vertexpoints, 3, MemoryLocation.Heap);
+
+            StandardShader = new Shader(null, ReflectionShader, GLRenderMode.Triangle, GLExtraAttributeData.XYZ_CameraSpace);
+        //    Skybox = new GLCubemap("skybox_data");
+
+
+            #region MemoryAddresses
             nbAddr = (float*)NormalBuffer.GetAddress();
             vertexpoints = null;
+
+            #endregion
 
             #region CubeObject
             CubeVBO = new GLBuffer(renderX.PrimitiveTypes.Cube(), 5, MemoryLocation.Heap);
@@ -155,13 +195,7 @@ namespace renderXF
             cubeShader.SetOverrideAttributeCount(0);
             #endregion
 
-            SSRShader = new Shader(null, SSR_Fragment, GLRenderMode.Triangle, GLExtraAttributeData.XYZ_XY_Both);
-
-            VignetteShader = new Shader(VignettePass);
-            SSRShaderPost = new Shader(SSR_Pass);
-
-
-            #region ScreenGrid
+            #region 3D_Grid
             float[] vpoints = new float[]{
                 0,0,0, 9,0,0,
                 0,0,1, 9,0,1,
@@ -186,11 +220,10 @@ namespace renderXF
                 9,0,0, 9,0,9
             };
 
-
-            #endregion
             LineBuffer = new GLBuffer(vpoints, 3, MemoryLocation.Heap);
             LineShader = new Shader(GridShaderVS, GridShaderFS, GLRenderMode.Line, GLExtraAttributeData.XYZ_CameraSpace);
-            
+
+            #endregion
             
             #region CameraIndicator
             CameraIndicator = new Shader(CIVS, null, GLRenderMode.TriangleGouraud);
@@ -209,62 +242,58 @@ namespace renderXF
             CIP_Normals = (float*)CIPNormals.GetAddress();
             #endregion
 
-            GL = new renderX(StartupForm.W, StartupForm.H, this.Handle);
-            GL.SelectBuffer(VertexBuffer);
+            #region Post-Processing
+            SSRShader = new Shader(null, SSR_Fragment, GLRenderMode.Triangle, GLExtraAttributeData.XYZ_XY_Both);
 
+            VignetteShader = new Shader(VignettePass);
+            SSRShaderPost = new Shader(SSR_Pass);
+            #endregion
+
+            #region MiniGLIndicator
             MiniGL = new renderX(130, 128);
-            #region MiniGL
             MiniGL.SetMatrixData(90, 10);
             MiniGL.SelectShader(CameraIndicator);
             MiniGL.SetFaceCulling(true, false);
+            MiniGL.InitializeClickBuffer();
+            MiniGL.SetClickBufferWrite(true);
             #endregion
-
-            StandardShader = new Shader(null, BasicShader, GLRenderMode.TriangleFlat);
-
-           // Debug.WriteLine(StandardShader.GetFragmentAttributePreview(CubeVBO));
-
-            RT = new RenderThread(144);
-            RT.RenderFrame += RT_RenderFrame;
-           
+            
+            #region renderX_Initialization
+            GL = new renderX(StartupForm.W, StartupForm.H, this.Handle);
+            GL.SelectBuffer(VertexBuffer);
             GL.SelectShader(StandardShader);
             GL.SetMatrixData(90, 10);
 
-            MiniGL.InitializeClickBuffer();
-            MiniGL.SetClickBufferWrite(true);
 
+            #endregion
+
+            #region GLSettings
             cachedBuffer = new GLCachedBuffer(GL);
-
-       
 
             GL.SetWireFrameOFFSET(-0.1f);
             GL.SetFaceCulling(true, false);
+
+            #endregion
+
+            #region RenderThreadStart
+            RT = new RenderThread(144);
+            RT.RenderFrame += RT_RenderFrame;
             RT.Start();
+            #endregion
         }
-
-        Vector3 lightPosition = new Vector3(0, 0, 0);
-
-        Vector3 cameraRotation = new Vector3(0, 0, 0);
-        Vector3 cameraPosition = new Vector3(0, 0, -50);
-
-        Vector3 lcP = new Vector3(0, 0, 0);
-        Vector3 lcR = new Vector3(0, 0, 0);
-        
-        float tick = 0;
-        
-        bool requestHome = false;
-        bool readyCache = false;
-        bool requestClick = false;
-        int rcX, rcY;
 
         void RT_RenderFrame()
         {
+            #region LightDataTimingsAndMouse
             CalculateDeltaTime();
             lightPosition = new Vector3(1000f * (float)Math.Cos(tick), 50, 1000f * (float)Math.Sin(tick));
 
             tick += 0.01f * deltaTimeAdjusted;
             int MouseX = 0;
             int MouseY = 0;
-            
+
+            #endregion
+
             #region CursorPosition
             if (CursorHook)
             {
@@ -350,7 +379,7 @@ namespace renderXF
             }
             #endregion
 
-            #region CameraLerping
+            #region CameraLerpingAndPosition
             if (!requestHome)
                 cameraPosition = renderX.Pan3D(cameraPosition, cameraRotation, (KeyDelta.x / 32f) * deltaTimeAdjusted, 0, (KeyDelta.y / 32f) * deltaTimeAdjusted);
             else
@@ -360,29 +389,38 @@ namespace renderXF
 
                 if ((cameraPosition - TargetPosition).Abs() < 0.01f && (cameraRotation - TargetRotation).Abs().Repeat(360) < 0.01f) requestHome = false;
             }
-            #endregion
-            
+
             GL.ForceCameraRotation(cameraRotation);
             GL.ForceCameraPosition(cameraPosition);
-            
+            #endregion          
+
+            #region MatrixInterpolation
             if (Math.Abs(CMatrix - TMatrix) > 0.001f) CMatrix = renderX.Lerp(CMatrix, TMatrix, 0.1f * deltaTimeAdjusted); else CMatrix = TMatrix;           
-           // GL.SetMatrixData(90, 20 * 2 + 40, CMatrix);
 
             GL.SetMatrixData(90, 20, CMatrix);
-
             MiniGL.SetMatrixData(90, 350, CMatrix);
+
+            #endregion
 
             PrepareLightningData();
 
             GL.ClearDepth();
 
+            #region BufferCaching
             bool y = cameraPosition.Equals(lcP) && cameraRotation.Equals(lcR) && Math.Abs(CurrentFOV - TargetFOV) < 0.01f && CMatrix == TMatrix;
             if (!y) readyCache = false;
+            #endregion
 
             ProcessCameraIndicator();
-
+          
+            
 
             GL.Clear(51, 153, 255);
+
+         //   sw.Start();
+        //    GL.DrawSkybox(Skybox);
+         //   sw.Stop();
+
             GL.SelectShader(StandardShader);
             GL.SelectBuffer(VertexBuffer);
 
@@ -394,25 +432,18 @@ namespace renderXF
                 y = false;
             }
 
-
             sw.Start();
             if (readyCache) GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoop);  else GL.Draw();
             sw.Stop();
             
-
             GL.Draw(LineBuffer, LineShader);
             GL.Draw(CubeVBO, cubeShader);
 
-            
-
-         //   GL.SelectShader(SSRShaderPost);
-         //   GL.Pass();
-
-
-
+            #region AxesIndicator
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(1000000, 0, 0), 255, 0, 0);
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(0, 1000000, 0), 0, 255, 0);
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(0, 0, 1000000), 0, 0, 255);
+            #endregion
 
             GL.SelectShader(VignetteShader);
 
@@ -421,16 +452,15 @@ namespace renderXF
           //  if (fcull) GL.Pass();
          //   else GL.VignettePass();
 
+          //  GL.VignettePass();
          //   sw.Stop();
 
             MiniGL.BlitInto(GL, GL.RenderWidth - 130, GL.RenderHeight - 128, Color.FromArgb(255, 0, 0, 0));
 
          //   GL.BlitInto(infoBitmap, new Rectangle(0, 0, 200, 200)); 
-
-         //   using (Graphics g = Graphics.FromImage(infoBitmap))
-        //        g.DrawString("My String", this.Font, Brushes.Black, 0, 0);
-
          //   GL.BlitFrom(infoBitmap, new Rectangle(0, 0, 40, 40), 0, 0);
+
+         
 
             GL.Blit();
 

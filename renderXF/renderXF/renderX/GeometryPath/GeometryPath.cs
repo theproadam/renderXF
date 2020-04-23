@@ -14,6 +14,20 @@ namespace renderX2
         [DllImport("kernel32.dll")]
         static extern void RtlZeroMemory(IntPtr dst, int length);
 
+        [DllImport("AcceleratedFill.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        static extern void ReadyFaces(int size);
+
+        [DllImport("AcceleratedFill.dll", CallingConvention = CallingConvention.Cdecl)]
+        static extern void SetData(int* cptr, float* zptr, int rendrW, bool cm, float zFar, float ovalue, float cx, float cy, float cz,
+        float cox, float coy, float coz, float sx, float sy, float sz, float* sbptr, int rH, float rwv, float rhv, float fW, float fH, float fwI, float fhI, float oX, float oY, float oW,
+        float oH, float mpv, bool FC, bool CF, float Znear, float tanH, float tanV, int readstride, int facestride);
+
+
+       
+
+        
+
+
         public float* p; //VERTEX_DATA INPUT
         public byte* bptr; //DRAWING_BUFFER
         public int* iptr; //DRAWING_BUFFER as int
@@ -101,7 +115,6 @@ namespace renderX2
 
         internal bool LinkedWFrame = false;
 
-
         internal int lValue;
         internal byte dB, dR, dG; //Debug Wireframe Colors
         internal int diValue; //Integer Debug Wireframe Color
@@ -109,6 +122,14 @@ namespace renderX2
         //AntiAliasing Data
         internal bool LINE_AA = false;
         internal bool FACE_AA = false;
+
+        //Skybox Drawing
+        internal float** sptr;
+        internal int* bsptr;
+        internal int** txptr;
+        internal int rd;
+        internal float* sdptr;
+        internal int skyboxSize;
 
         public GeometryPath(renderX GLSource, int rW, int rH)
         {
@@ -264,7 +285,16 @@ namespace renderX2
             oValue = ow / ((float)Math.Tan(radsFOV / 2f) * matrixlerpo);
         }
 
+        internal void ForceUpdate()
+        {
+            SetData(iptr, dptr, renderWidth, cmatrix, farZ, oValue, cX, cY, cZ, coX, coY, coZ, sX, sY, sZ, p, renderHeight,
+                rw, rh, fw, fh, fwi, fhi, ox, oy, ow, oh, matrixlerpv, FACE_CULL, CULL_FRONT, nearZ, tanHorz, tanVert, ReadStride, FaceStride);
+        }
 
+        internal void CPPFill(int length)
+        {
+            ReadyFaces(length);
+        }
 
         #region Unrelated Stuff
 
@@ -446,6 +476,53 @@ namespace renderX2
             else return false;
         }
 
+        unsafe bool ScanLinePLUS(int Line, float* TRIS_DATA, int TRIS_SIZE, float* Intersects)
+        {
+            int IC = 0;
+            for (int i = 0; i < TRIS_SIZE; i++)
+            {
+                if (TRIS_DATA[i * Stride + 1] <= Line)
+                {
+                    if (i == 0 && TRIS_DATA[(TRIS_SIZE - 1) * Stride + 1] >= Line)
+                    {
+                        LIPA_PLUS(Intersects, IC, TRIS_DATA, TRIS_SIZE - 1, i, Line);
+                        IC++;
+
+                        if (IC >= 2) break;
+                    }
+                    else if (i > 0 && TRIS_DATA[(i - 1) * Stride + 1] >= Line)
+                    {
+                        LIPA_PLUS(Intersects, IC, TRIS_DATA, i - 1, i, Line);
+                        IC++;
+
+                        if (IC >= 2) break;
+                    }
+                }
+                else if (TRIS_DATA[i * Stride + 1] > Line)
+                {
+                    if (i == 0 && TRIS_DATA[(TRIS_SIZE - 1) * Stride + 1] <= Line)
+                    {
+                        LIPA_PLUS(Intersects, IC, TRIS_DATA, TRIS_SIZE - 1, i, Line);
+                        IC++;
+
+                        if (IC >= 2) break;
+                    }
+                    else if (i > 0 && TRIS_DATA[(i - 1) * Stride + 1] <= Line)
+                    {
+                        LIPA_PLUS(Intersects, IC, TRIS_DATA, i - 1, i, Line);
+                        IC++;
+
+                        if (IC >= 2) break;
+                    }
+
+                }
+            }
+
+
+            if (IC == 2)
+                return true;
+            else return false;
+        }
       
         #region ScreenSpaceInterpolation
         unsafe void LIP(float* XR, int I, float* V_DATA, int A, int B, int LinePos)
@@ -564,6 +641,84 @@ namespace renderX2
             XR[I] = X;
             XR[2 + I] = Z;
         }
+
+        unsafe void LIPA_PLUS(float* XR, int I, float* V_DATA, int A, int B, int LinePos)
+        {
+            float X;
+            float Z;
+
+            A *= Stride;
+            B *= Stride;
+
+            if (V_DATA[A + 1] == LinePos)
+            {
+                XR[I * (Stride - 1)] = V_DATA[A];
+                XR[I * (Stride - 1) + 1] = V_DATA[A + 2];
+
+                for (int a = 3; a < Stride; a++)
+                {
+                    XR[I * (Stride - 1) + (a - 1)] = V_DATA[A + a];
+                }
+                return;
+            }
+
+            if (V_DATA[B + 1] == LinePos)
+            {
+                XR[I * (Stride - 1)] = V_DATA[B];
+                XR[I * (Stride - 1) + 1] = V_DATA[B + 2];
+
+                for (int a = 3; a < Stride; a++)
+                {
+                    XR[I * (Stride - 1) + (a - 1)] = V_DATA[B + a];
+                }
+                return;
+            }
+
+            if (V_DATA[A + 1] - V_DATA[B + 1] != 0)
+            {
+                float slope = (V_DATA[A] - V_DATA[B]) / (V_DATA[A + 1] - V_DATA[B + 1]);
+                float b = -slope * V_DATA[A + 1] + V_DATA[A];
+                X = slope * LinePos + b;
+
+                float slopeZ = (V_DATA[A + 2] - V_DATA[B + 2]) / (V_DATA[A + 1] - V_DATA[B + 1]);
+                float bZ = -slopeZ * V_DATA[A + 1] + V_DATA[A + 2];
+                Z = slopeZ * LinePos + bZ;
+
+            }
+            else
+            {
+                throw new Exception("this shoudnt happen");
+            }
+
+            float ZDIFF = (1f / V_DATA[A + 2] - 1f / V_DATA[B + 2]);
+            bool usingZ = ZDIFF != 0;
+
+            if (ZDIFF != 0)
+                usingZ = ZDIFF * ZDIFF >= 0.00001f;
+
+            if (usingZ & matrixlerpv != 1)
+                for (int a = 3; a < Stride; a++)
+                {
+                    float slopeA = (V_DATA[A + a] - V_DATA[B + a]) / ZDIFF;
+                    float bA = -slopeA / V_DATA[A + 2] + V_DATA[A + a];
+                    XR[I * (Stride - 1) + (a - 1)] = slopeA / Z + bA;
+                }
+            else if (V_DATA[A + 1] - V_DATA[B + 1] != 0)
+                for (int a = 3; a < Stride; a++)
+                {
+                    float slopeA = (V_DATA[A + a] - V_DATA[B + a]) / (V_DATA[A + 1] - V_DATA[B + 1]);
+                    float bA = -slopeA * V_DATA[A + 1] + V_DATA[A + a];
+                    XR[I * (Stride - 1) + (a - 1)] = (slopeA * (float)LinePos + bA);
+
+
+                }
+            else throw new Exception("this shoudnt happen");
+
+            XR[I * (Stride - 1) + 0] = X;
+            XR[I * (Stride - 1) + 1] = Z;
+        }
+
+
 
         #endregion
 

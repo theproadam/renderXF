@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Drawing;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
@@ -593,7 +594,7 @@ namespace renderX2
             }
         }
 
-        public GLTexture(string FilePath, MemoryLocation StackOrHeap)
+        public GLTexture(string FilePath, MemoryLocation StackOrHeap, params DuringLoad[] LoadingOptions)
         {
             if (!System.IO.File.Exists(FilePath))
                 throw new System.IO.FileNotFoundException();
@@ -602,39 +603,68 @@ namespace renderX2
             size = SourceArray.Length;
             WidthStride = stride * Width;
 
+            int readstride = stride;
+
             if (SourceArray.Length != Width * Height * stride)
                 throw new Exception("uhhh this exception should not trigger");
 
             if (SourceArray.Length % stride != 0)
                 throw new Exception("uhhh this exception should not trigger");
 
+            int allocSize = SourceArray.Length;
+            bool copyAlpha = LoadingOptions.Contains(DuringLoad.CopyAlpha);
+
+            if (copyAlpha & stride == 3)
+                throw new Exception("Cannot copy alpha for a 24bpp image");
+
+            if (stride != 3 & stride != 4)
+                throw new Exception("Only 24bpp or 32bpp images are supported!");
+
+            if (LoadingOptions.Contains(DuringLoad.ConvertTo32bpp))
+            { 
+                allocSize = Width * Height * 4;
+                stride = 4;
+                WidthStride = Width * stride;
+            }
+
             if (StackOrHeap == MemoryLocation.Heap)
             {
                 STORED_ON_STACK = false;
-                HEAP_ptr = Marshal.AllocHGlobal(SourceArray.Length);
+                HEAP_ptr = Marshal.AllocHGlobal(allocSize);
                 ptr = (byte*)HEAP_ptr;
-
-                for (int i = 0; i < SourceArray.Length; i++){
-                    ptr[i] = SourceArray[i];
-                }
             }
             else
             {
                 STORED_ON_STACK = true;
 
-                T = new Thread(() => ThreadMethod(out ptr, SourceArray.Length), SourceArray.Length + 1000);
+                T = new Thread(() => ThreadMethod(out ptr, allocSize), allocSize + 1000);
                 T.Start();
 
-                while (ptr == null)
-                {
-                    Thread.Sleep(10);
-                }
-
-                for (int i = 0; i < SourceArray.Length; i++)
-                {
-                    ptr[i] = SourceArray[i];
-                }
+                while (ptr == null) Thread.Sleep(10);
             }
+
+            
+            if (LoadingOptions.Contains(DuringLoad.Flip))
+                for (int w = 0; w < Width; w++)
+                    for (int h = 0; h < Height; h++)
+                    {
+                        ptr[h * WidthStride + w * stride] = SourceArray[((Height - 1) - h) * WidthStride + w * stride];
+                        ptr[h * WidthStride + w * stride + 1] = SourceArray[((Height - 1) - h) * WidthStride + w * stride + 1];
+                        ptr[h * WidthStride + w * stride + 2] = SourceArray[((Height - 1) - h) * WidthStride + w * stride + 2];
+
+                        if (copyAlpha) 
+                            ptr[h * WidthStride + w * stride + 3] = SourceArray[((Height - 1) - h) * WidthStride + w * stride + 3];
+                    }    
+            else
+                for (int i = 0; i < Width * Height; i++)
+                {
+                    ptr[i * stride] = SourceArray[i * readstride];
+                    ptr[i * stride + 1] = SourceArray[i * readstride + 1];
+                    ptr[i * stride + 2] = SourceArray[i * readstride + 2];
+
+                    if (copyAlpha) ptr[i * stride + 3] = SourceArray[i * readstride + 3];
+                }
+            
         }
 
         public void Release()
@@ -841,6 +871,86 @@ namespace renderX2
         {
             RGB_ptr = Marshal.ReAllocHGlobal(RGB_ptr, (IntPtr)(w * h * 4));
             Z_ptr = Marshal.ReAllocHGlobal(Z_ptr, (IntPtr)(w * h * 4));
+        }
+    }
+
+    public unsafe class GLCubemap
+    {
+        public GLTexture FRONT;
+        public GLTexture BACK;
+        public GLTexture LEFT;
+        public GLTexture RIGHT;
+        public GLTexture TOP;
+        public GLTexture BOTTOM;
+
+        public GLCubemap(GLTexture Front, GLTexture Back, GLTexture Left, GLTexture Right, GLTexture Top, GLTexture Bottom)
+        {
+            throw new Exception("Not Yet Supported!");
+
+            FRONT = Front;
+            BACK =  Back;
+            LEFT = Left;
+            RIGHT = Right;
+            TOP = Top;
+            BOTTOM = Bottom;
+        }
+
+        public GLCubemap(string folderpath)
+        { 
+            if (!File.Exists(folderpath + @"\FRONT.jpg"))
+                throw new Exception("Error!");
+
+            if (!File.Exists(folderpath + @"\BACK.jpg"))
+                throw new Exception("Error!");
+
+            if (!File.Exists(folderpath + @"\TOP.jpg"))
+                throw new Exception("Error!");
+
+            if (!File.Exists(folderpath + @"\BOTTOM.jpg"))
+                throw new Exception("Error!");
+
+            if (!File.Exists(folderpath + @"\LEFT.jpg"))
+                throw new Exception("Error!");
+
+            if (!File.Exists(folderpath + @"\RIGHT.jpg"))
+                throw new Exception("Error!");
+
+
+            FRONT = new GLTexture(folderpath + @"\FRONT.jpg", MemoryLocation.Heap, DuringLoad.ConvertTo32bpp);
+            BACK = new GLTexture(folderpath + @"\BACK.jpg", MemoryLocation.Heap, DuringLoad.ConvertTo32bpp);
+            TOP = new GLTexture(folderpath + @"\TOP.jpg", MemoryLocation.Heap, DuringLoad.ConvertTo32bpp);
+            BOTTOM = new GLTexture(folderpath + @"\BOTTOM.jpg", MemoryLocation.Heap, DuringLoad.ConvertTo32bpp);
+            LEFT = new GLTexture(folderpath + @"\LEFT.jpg", MemoryLocation.Heap, DuringLoad.ConvertTo32bpp);
+            RIGHT = new GLTexture(folderpath + @"\RIGHT.jpg", MemoryLocation.Heap, DuringLoad.ConvertTo32bpp);
+
+        }
+
+        public void Sample(Vector3 Direction)
+        { 
+            
+        }
+
+        internal bool CheckValid()
+        {
+            return (FRONT != null) & (BACK != null) & (LEFT != null) & (RIGHT != null) & (TOP != null) & (BOTTOM != null);
+        }
+
+        internal bool isValid()
+        {
+            bool h = (FRONT.Height == BACK.Height & BACK.Height == LEFT.Height & LEFT.Height == RIGHT.Height & RIGHT.Height == TOP.Height & TOP.Height == BOTTOM.Height);
+            bool w = (FRONT.Width == BACK.Width & BACK.Width == LEFT.Width & LEFT.Width == RIGHT.Width & RIGHT.Width == TOP.Width & TOP.Width == BOTTOM.Width);
+            bool s = (FRONT.stride == BACK.stride & BACK.stride == LEFT.stride & LEFT.stride == RIGHT.stride & RIGHT.stride == TOP.stride & TOP.stride == BOTTOM.stride);
+            bool sxsy = FRONT.Height == FRONT.Width;
+
+            return s & w & h & sxsy;
+        }
+    }
+
+    public unsafe class Sample
+    {
+        protected void Reflect()
+        { 
+            
         }
     }
 }

@@ -35,7 +35,50 @@ namespace renderXF
 
         #endregion
 
+        //const float slope = 2048f / (float)Math.Sqrt(2);
+       // const int addition = 1024;
 
+        void SampleCubemap(Vector3 dir)
+        {
+            int TARGET_X;
+            int TARGET_Y;
+            int* sampleTarget;
+
+            if (dir.x > 0.707102f)
+            {
+                //Right
+
+            }
+            else if (dir.x < -0.707102f)
+            {
+                //Left
+            }
+            else
+            { 
+                //
+              //  TARGET_X = (int)(dir.x * slope) + addition;
+
+            }
+
+
+        }
+
+        unsafe void ReflectionShader(byte* BGR, float* DATA, int FaceIndex)
+        {
+            Vector3 Normal = new Vector3(nbAddr[FaceIndex * 3], nbAddr[FaceIndex * 3 + 1], nbAddr[FaceIndex * 3 + 2]);
+            Vector3 Position = new Vector3(DATA[0], DATA[1], DATA[2]);
+
+            Vector3 I = Vector3.Normalize(Position);
+            Vector3 R = Vector3.Reflect(I, Normal);
+          //  FragColor = vec4(texture(skybox, R).rgb, 1.0);
+
+
+
+
+            BGR[0] = (byte)(I.x * 127.5f + 127.5f);
+            BGR[1] = (byte)(I.y * 127.5f + 127.5f);
+            BGR[2] = (byte)(I.z * 127.5f + 127.5f);
+        }
 
         unsafe void SSR_Fragment(byte* BGR, float* Normals, int FaceIndex)
         { 
@@ -67,30 +110,11 @@ namespace renderXF
     
         unsafe void UV_FragmentShader(byte* tA, float* test, int InstanceNumber)
         {
-            //  tA[0] = (byte)(127.5f + 127.5f * nbAddr[InstanceNumber * 3]);
-            //  tA[1] = (byte)(127.5f + 127.5f * nbAddr[InstanceNumber * 3 + 1]);
-            //  tA[2] = (byte)(127.5f + 127.5f * nbAddr[InstanceNumber * 3 + 2]);    
+            //  tA[0] = (byte)(255 * test[0]);
+            //  tA[1] = (byte)(255 * test[1]);
 
-             // tA[2] = (byte)(255 * test[0]);
-             // tA[1] = (byte)(255 * test[1]);
-
-            //  tA[0] = (byte)(127.5f + 127.5f * test[0]);
-            //  tA[1] = (byte)(127.5f + 127.5f * test[1]);
-            //  tA[2] = (byte)(127.5f + 127.5f * test[2]);    
-
-            //   tA[2] = 155;
-
-            //  tA[0] = (byte)((255f / 1024f) * test[0]);
-            //  tA[1] = (byte)((255f / 768f) * test[1]);
-
-          //  tA[0] = (byte)((255f / 1000f) * test[0] + 127.5f);
-          //  tA[1] = (byte)((255f / 1000f) * test[1] + 127.5f);
-         //   tA[2] = (byte)((255f / 1000f) * test[2] + 127.5f);
-
-            //   tA[0] = (byte)test[0];
-            //   tA[1] = (byte)test[1];
-            //   tA[2] = (byte)test[2];
-
+            int x = (int)(Clamp01(test[0]) * 349f);
+            int y = (int)(Clamp01(test[1]) * 399f);
 
           //  return;
           //  int x = (int)(renderX.Clamp01(test[0]) * (float)(myTexture.Width - 1));
@@ -99,6 +123,14 @@ namespace renderXF
         //    tA[0] = *(textaddr + (y * myTexture.WidthStride + (x * 4) + 0));
         //    tA[1] = *(textaddr + (y * myTexture.WidthStride + (x * 4) + 1));
         //    tA[2] = *(textaddr + (y * myTexture.WidthStride + (x * 4) + 2));
+        }
+
+        unsafe void UV_BigShader(float* OUT, float* IN, int FaceIndex)
+        {
+            OUT[0] = IN[0] * 50;
+            OUT[1] = IN[1] * 50;
+            OUT[2] = IN[2] * 50;
+
         }
 
         unsafe void BasicShader(byte* BGR, float* Attributes, int FaceIndex)

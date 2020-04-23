@@ -26,6 +26,7 @@ namespace renderX2
         IntPtr TargetDC;
         IntPtr LinkedHandle;
  
+        
         //IntPtr FaceBuffer;
         private bool disposed = false;
         bool RequestCopyAfterDraw = false;
@@ -37,6 +38,23 @@ namespace renderX2
         bool ClickBufferEnabled = false;
         IntPtr ClickBuffer;
         IntPtr AnyBuffer;
+
+        IntPtr SkyboxPointerBuffer;
+        IntPtr SkyboxFaceCountData;
+        IntPtr SkyboxData;
+        IntPtr SkyboxTexturePointers;
+
+        [DllImport("AcceleratedFill.dll", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void FillFlatC(int index);
+
+        [DllImport("AcceleratedFill.dll", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ScanFill(int index);
+
+        [DllImport("AcceleratedFill.dll", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void SetFillData(float** sPtr, int* bsPtr, int** txtPtr, int rD, float* sdPtr);
+
+
+
 
         ~renderX()
         {
@@ -262,8 +280,33 @@ namespace renderX2
 
 
 
-
+                 //   for (int i = 0; i < SB.FaceCount; i++) ops.FillTrueFlat(i);
                     Parallel.For(0, SB.FaceCount, ops.FillTrueFlat);
+                }
+                else if (SelectedShader.sType == GLRenderMode.TriangleFlatCPP)
+                {
+                    if (SelectedShader.sLevel != GLExtraAttributeData.None)
+                        throw new Exception("GLRenderMode.TriangleFlat does not support extra attirbute data. Attribute pointer will be null.");
+
+                    if (SelectedShader.vShdrAttr > 0 & !ExceptionOverride)
+                        throw new WarningException("TriangleFlat does not load attributes");
+
+                    if (SB.stride > 3 & SelectedShader.vShdrAttr != 0)
+                        throw new WarningException("TriangleFlat does not load attributes");
+
+                    ops.ForceUpdate();
+
+                    ops.Stride = 3;
+                    ops.ReadStride = SB.stride;
+                    ops.FaceStride = 3 * SB.stride;
+
+
+                    ops.CPPFill(SB.FaceCount);
+
+                  //  for (int i = 0; i < SB.FaceCount; i++) ops.FillWithCPP(i);
+                  //  Parallel.For(0, SB.FaceCount, FillFlatC);
+
+                 //   for (int i = 0; i < SB.FaceCount; i++) FillFlatC(i);
                 }
                 else if (SelectedShader.sType == GLRenderMode.TriangleGouraud)
                 {
@@ -476,7 +519,75 @@ namespace renderX2
             }
         }
 
+        public void DrawSkybox(GLCubemap Cubemap)
+        {
+            lock (ThreadLock)
+            {
+                if (!Cubemap.isValid())
+                    throw new Exception("Invalid Cubemap");
 
+                ops.rd = 0;
+                
+                ops.bptr = (byte*)DrawingBuffer;
+                ops.dptr = (float*)DepthBuffer;
+                ops.iptr = (int*)DrawingBuffer;
+
+                SkyboxPointerBuffer = Marshal.AllocHGlobal(RenderHeight * 12 * 4);
+                SkyboxData = Marshal.AllocHGlobal(4 * 77 * 12);
+                SkyboxFaceCountData = Marshal.AllocHGlobal(RenderHeight * 4);
+                SkyboxTexturePointers = Marshal.AllocHGlobal(12 * 4);
+
+                RtlZeroMemory(SkyboxFaceCountData, RenderHeight * 4);
+              //  RtlZeroMemory(SkyboxData, 4 * 76 * 12);
+              //  RtlZeroMemory(SkyboxPointerBuffer, RenderHeight * 12 * 4);
+
+
+                ops.sptr = (float**)SkyboxPointerBuffer;
+                ops.sdptr = (float*)SkyboxData;
+                ops.bsptr = (int*)SkyboxFaceCountData;
+
+                ops.txptr = (int**)SkyboxTexturePointers;
+
+                ops.txptr[2] = (int*)Cubemap.FRONT.ptr;
+                ops.txptr[3] = (int*)Cubemap.FRONT.ptr;
+                ops.txptr[0] = (int*)Cubemap.BACK.ptr;
+                ops.txptr[1] = (int*)Cubemap.BACK.ptr;
+                ops.txptr[4] = (int*)Cubemap.LEFT.ptr;
+                ops.txptr[5] = (int*)Cubemap.LEFT.ptr;
+                ops.txptr[6] = (int*)Cubemap.RIGHT.ptr;
+                ops.txptr[7] = (int*)Cubemap.RIGHT.ptr;
+                ops.txptr[10] = (int*)Cubemap.TOP.ptr;
+                ops.txptr[11] = (int*)Cubemap.TOP.ptr;
+                ops.txptr[8] = (int*)Cubemap.BOTTOM.ptr;
+                ops.txptr[9] = (int*)Cubemap.BOTTOM.ptr;
+
+                ops.skyboxSize = Cubemap.BACK.Height;
+
+                float[] CUBE_DATA = renderX.PrimitiveTypes.Cube();
+
+                GCHandle ptr = GCHandle.Alloc(CUBE_DATA, GCHandleType.Pinned);
+
+                ops.p = (float*)ptr.AddrOfPinnedObject();
+                ops.Stride = 5;
+                ops.FaceStride = 5 * 3;
+                ops.ReadStride = 5;
+
+              //  for (int i = 0; i < 12; i++) ops.FillSkybox(i);
+
+                Parallel.For(0, 12, ops.FillSkybox);
+
+            //    for (int i = 0; i < RenderHeight; i++) ops.SkyPass(i);
+
+
+                Parallel.For(0, RenderHeight, ops.SkyPass);
+
+                ptr.Free();
+
+                Marshal.FreeHGlobal(SkyboxFaceCountData);
+                Marshal.FreeHGlobal(SkyboxData);
+                Marshal.FreeHGlobal(SkyboxPointerBuffer);
+            }
+        }
 
         internal void GetHWNDandDC(out IntPtr DC, out IntPtr HWND)
         {
@@ -501,6 +612,7 @@ namespace renderX2
     {
         Triangle,
         TriangleFlat,
+        TriangleFlatCPP,
         TriangleGouraud,
         Wireframe,
         WireframeDebug,
@@ -541,6 +653,13 @@ namespace renderX2
     { 
         Heap,
         Stack
+    }
+
+    public enum DuringLoad
+    { 
+        Flip,
+        ConvertTo32bpp,
+        CopyAlpha
     }
 
     public unsafe class GLBuffer : IDisposable
