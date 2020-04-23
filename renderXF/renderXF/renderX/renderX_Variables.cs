@@ -667,6 +667,80 @@ namespace renderX2
             
         }
 
+        public GLTexture(Bitmap Image, MemoryLocation StackOrHeap, params DuringLoad[] LoadingOptions)
+        {
+            if (Image == null)
+                throw new ArgumentNullException();
+
+            byte[] SourceArray = GetBytesFromBitmap(Image, out stride, out Width, out Height);
+            size = SourceArray.Length;
+            WidthStride = stride * Width;
+
+            int readstride = stride;
+
+            if (SourceArray.Length != Width * Height * stride)
+                throw new Exception("uhhh this exception should not trigger");
+
+            if (SourceArray.Length % stride != 0)
+                throw new Exception("uhhh this exception should not trigger");
+
+            int allocSize = SourceArray.Length;
+            bool copyAlpha = LoadingOptions.Contains(DuringLoad.CopyAlpha);
+
+            if (copyAlpha & stride == 3)
+                throw new Exception("Cannot copy alpha for a 24bpp image");
+
+            if (stride != 3 & stride != 4)
+                throw new Exception("Only 24bpp or 32bpp images are supported!");
+
+            if (LoadingOptions.Contains(DuringLoad.ConvertTo32bpp))
+            {
+                allocSize = Width * Height * 4;
+                stride = 4;
+                WidthStride = Width * stride;
+            }
+
+            if (StackOrHeap == MemoryLocation.Heap)
+            {
+                STORED_ON_STACK = false;
+                HEAP_ptr = Marshal.AllocHGlobal(allocSize);
+                ptr = (byte*)HEAP_ptr;
+            }
+            else
+            {
+                STORED_ON_STACK = true;
+
+                T = new Thread(() => ThreadMethod(out ptr, allocSize), allocSize + 1000);
+                T.Start();
+
+                while (ptr == null) Thread.Sleep(10);
+            }
+
+
+            if (LoadingOptions.Contains(DuringLoad.Flip))
+                for (int w = 0; w < Width; w++)
+                    for (int h = 0; h < Height; h++)
+                    {
+                        ptr[h * WidthStride + w * stride] = SourceArray[((Height - 1) - h) * WidthStride + w * stride];
+                        ptr[h * WidthStride + w * stride + 1] = SourceArray[((Height - 1) - h) * WidthStride + w * stride + 1];
+                        ptr[h * WidthStride + w * stride + 2] = SourceArray[((Height - 1) - h) * WidthStride + w * stride + 2];
+
+                        if (copyAlpha)
+                            ptr[h * WidthStride + w * stride + 3] = SourceArray[((Height - 1) - h) * WidthStride + w * stride + 3];
+                    }
+            else
+                for (int i = 0; i < Width * Height; i++)
+                {
+                    ptr[i * stride] = SourceArray[i * readstride];
+                    ptr[i * stride + 1] = SourceArray[i * readstride + 1];
+                    ptr[i * stride + 2] = SourceArray[i * readstride + 2];
+
+                    if (copyAlpha) ptr[i * stride + 3] = SourceArray[i * readstride + 3];
+                }
+
+        }
+
+
         public void Release()
         {
             if (size == -1 | T == null)
@@ -697,6 +771,29 @@ namespace renderX2
         public unsafe IntPtr GET_ADDR()
         {
             return (IntPtr)ptr;
+        }
+
+        internal byte[] GetBytesFromBitmap(Bitmap srcBitmap, out int BytesPerPixel, out int Width, out int Height)
+        {
+            Bitmap bmp = new Bitmap(srcBitmap);
+            ushort bpp = (ushort)Image.GetPixelFormatSize(bmp.PixelFormat);
+
+            int width = bmp.Width;
+            int height = bmp.Height;
+
+            Width = width;
+            Height = height;
+            BytesPerPixel = bpp / 8;
+
+            System.Drawing.Imaging.BitmapData resultData = bmp.LockBits(new Rectangle(0, 0, width, height), System.Drawing.Imaging.ImageLockMode.WriteOnly, bmp.PixelFormat);
+            byte[] byteArray = new byte[Width * Height * BytesPerPixel];
+
+            Marshal.Copy(resultData.Scan0, byteArray, 0, byteArray.Length);
+
+            bmp.UnlockBits(resultData);
+            bmp.Dispose();
+
+            return byteArray;
         }
 
         internal byte[] GetBytesFromFile(string FilePath, out int BytesPerPixel, out int Width, out int Height)

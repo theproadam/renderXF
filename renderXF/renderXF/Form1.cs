@@ -183,6 +183,8 @@ namespace renderXF
         //    Skybox = new GLCubemap("skybox_data");
 
 
+           // GLTexture myTexture = new GLTexture(infoBitmap, MemoryLocation.Heap, DuringLoad.Flip, DuringLoad.CopyAlpha, DuringLoad.ConvertTo32bpp);
+
             #region MemoryAddresses
             nbAddr = (float*)NormalBuffer.GetAddress();
             vertexpoints = null;
