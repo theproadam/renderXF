@@ -17,6 +17,8 @@ This software renderer is primarily focused on CAD thanks to its buffer caching 
 - GDI+ Interoperability (blit bitmaps onto the drawbuffer)
 - Draw and Depth Buffer caching
 - Simple Shader Code
+- Correct perspective interpolation
+- Very simple code (Easily portable into C++)
 - Drawing and depth buffer pointers available
 
 ## Shader Code Example
