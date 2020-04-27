@@ -426,7 +426,7 @@ namespace renderXF
          //   GL.Clear(51, 153, 255);
             GL.Clear();
             sw.Start();
-            GL.DrawSkybox(Skybox);
+         //   GL.DrawSkybox(Skybox);
             sw.Stop();
 
             GL.SelectShader(StandardShader);
