@@ -535,15 +535,15 @@ namespace renderX2
 
             if (V_DATA[A + 1] == LinePos)
             {
-                XR[I] = V_DATA[A];
-                XR[2 + I] = V_DATA[A + 2];
+                XR[I * 2] = V_DATA[A];
+                XR[I * 2 + 1] = V_DATA[A + 2];
                 return;
             }
 
             if (V_DATA[B + 1] == LinePos)
             {
-                XR[I] = V_DATA[B];
-                XR[2 + I] = V_DATA[B + 2];
+                XR[I * 2] = V_DATA[B];
+                XR[I * 2 + 1] = V_DATA[B + 2];
                 return;
             }
 
@@ -562,8 +562,8 @@ namespace renderX2
                 throw new Exception("il fix this later");
             }
 
-            XR[I] = X;
-            XR[2 + I] = Z;
+            XR[I * 2] = X;
+            XR[I * 2 + 1] = Z;
         }
 
         unsafe void LIPA(float* XR, int I, float* V_DATA, int A, int B, int LinePos)

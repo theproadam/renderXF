@@ -484,7 +484,7 @@ namespace renderX2
 
             lock (ThreadLock)
             {
-                RtlZeroMemory(TargetBuffer.GET_ADDR(), TargetBuffer.size);
+                RtlZeroMemory(TargetBuffer.GetAddress(), TargetBuffer.size);
             }
         }
 
@@ -492,7 +492,7 @@ namespace renderX2
         {
             ops.bptr = (byte*)DrawingBuffer;
             ops.dptr = (float*)DepthBuffer;
-            ops.DrawLine(x1, y1, x2, y2, R, G, B);
+            ops.DrawLine(x1, y1, x2, y2, B, G, R);
         }
 
         public void Line3D(Vector3 From, Vector3 To, byte R, byte G, byte B)

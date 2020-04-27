@@ -430,7 +430,7 @@ namespace renderX2
         {
             lock (TargetBuffer.BufferLock)
             {
-                F = new FastBlur(TargetBuffer.GET_ADDR(), TargetBuffer.Width, TargetBuffer.Height, 3);
+                F = new FastBlur(TargetBuffer.GetAddress(), TargetBuffer.Width, TargetBuffer.Height, 3);
                 F.GaussionBlur();
             }    
         }
@@ -768,12 +768,12 @@ namespace renderX2
             Thread.Sleep(Timeout.Infinite);
         }
 
-        public unsafe IntPtr GET_ADDR()
+        public unsafe IntPtr GetAddress()
         {
             return (IntPtr)ptr;
         }
 
-        internal byte[] GetBytesFromBitmap(Bitmap srcBitmap, out int BytesPerPixel, out int Width, out int Height)
+        byte[] GetBytesFromBitmap(Bitmap srcBitmap, out int BytesPerPixel, out int Width, out int Height)
         {
             Bitmap bmp = new Bitmap(srcBitmap);
             ushort bpp = (ushort)Image.GetPixelFormatSize(bmp.PixelFormat);
@@ -796,7 +796,7 @@ namespace renderX2
             return byteArray;
         }
 
-        internal byte[] GetBytesFromFile(string FilePath, out int BytesPerPixel, out int Width, out int Height)
+        byte[] GetBytesFromFile(string FilePath, out int BytesPerPixel, out int Width, out int Height)
         {
             Bitmap bmp = new Bitmap(FilePath);
             ushort bpp = (ushort)Image.GetPixelFormatSize(bmp.PixelFormat);
@@ -856,13 +856,16 @@ namespace renderX2
             }
         }
 
-        public GLFrameBuffer(renderX SourceGL, int ByteStrideSize, float RenderScale)
+        public GLFrameBuffer(renderX SourceGL, int ByteStrideSize, float RenderScale = 1)
         {
             if (SourceGL == null)
                 throw new Exception("null error");
 
             if (RenderScale == 0)
                 throw new Exception("Invalid Renderscale");
+
+            if (renderScale != 1)
+                throw new Exception("Renderscale currentely disabled!");
 
             BufferLock = SourceGL.ThreadLock;
 
@@ -891,7 +894,7 @@ namespace renderX2
             Marshal.FreeHGlobal(HEAP_ptr);
         }
 
-        public unsafe IntPtr GET_ADDR()
+        public unsafe IntPtr GetAddress()
         {
             return HEAP_ptr;
         }
@@ -954,7 +957,7 @@ namespace renderX2
             init = false;
         }
 
-        public unsafe IntPtr GET_ADDR()
+        public unsafe IntPtr GetAddress()
         {
             return RGB_ptr;
         }

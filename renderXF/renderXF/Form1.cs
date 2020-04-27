@@ -179,11 +179,17 @@ namespace renderXF
             NormalBuffer = new GLBuffer(normalBuffer, 3, MemoryLocation.Heap);
             VertexBuffer = new GLBuffer(vertexpoints, 3, MemoryLocation.Heap);
 
-            StandardShader = new Shader(null, ReflectionShader, GLRenderMode.Triangle, GLExtraAttributeData.XYZ_CameraSpace);
-        //    Skybox = new GLCubemap("skybox_data");
+            StandardShader = new Shader(null, BasicShader, GLRenderMode.TriangleFlat, GLExtraAttributeData.None);
+         //   Skybox = new GLCubemap("skybox_data");
 
+        //    GL.SetLinkedWireframe(true, 255, 255, 255);
+            
+            
+            //GLTexture myTexture = new GLTexture(infoBitmap, MemoryLocation.Heap, DuringLoad.Flip, DuringLoad.CopyAlpha, DuringLoad.ConvertTo32bpp);
 
-           // GLTexture myTexture = new GLTexture(infoBitmap, MemoryLocation.Heap, DuringLoad.Flip, DuringLoad.CopyAlpha, DuringLoad.ConvertTo32bpp);
+          //  GLFrameBuffer myFrameBuffer = new GLFrameBuffer(GL, 4);
+
+            
 
             #region MemoryAddresses
             nbAddr = (float*)NormalBuffer.GetAddress();
@@ -259,7 +265,7 @@ namespace renderXF
             MiniGL.InitializeClickBuffer();
             MiniGL.SetClickBufferWrite(true);
             #endregion
-            
+                   
             #region renderX_Initialization
             GL = new renderX(StartupForm.W, StartupForm.H, this.Handle);
             GL.SelectBuffer(VertexBuffer);
@@ -417,11 +423,11 @@ namespace renderXF
           
             
 
-            GL.Clear(51, 153, 255);
-
-         //   sw.Start();
-        //    GL.DrawSkybox(Skybox);
-         //   sw.Stop();
+         //   GL.Clear(51, 153, 255);
+            GL.Clear();
+            sw.Start();
+            GL.DrawSkybox(Skybox);
+            sw.Stop();
 
             GL.SelectShader(StandardShader);
             GL.SelectBuffer(VertexBuffer);
@@ -434,9 +440,9 @@ namespace renderXF
                 y = false;
             }
 
-            sw.Start();
+         //   sw.Start();
             if (readyCache) GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoop);  else GL.Draw();
-            sw.Stop();
+         //   sw.Stop();
             
             GL.Draw(LineBuffer, LineShader);
             GL.Draw(CubeVBO, cubeShader);
@@ -448,8 +454,7 @@ namespace renderXF
             #endregion
 
             GL.SelectShader(VignetteShader);
-
-
+            
           //  sw.Start();
           //  if (fcull) GL.Pass();
          //   else GL.VignettePass();
@@ -462,7 +467,7 @@ namespace renderXF
          //   GL.BlitInto(infoBitmap, new Rectangle(0, 0, 200, 200)); 
          //   GL.BlitFrom(infoBitmap, new Rectangle(0, 0, 40, 40), 0, 0);
 
-         
+
 
             GL.Blit();
 
@@ -487,7 +492,7 @@ namespace renderXF
         {
             int FI;
             int YI;
-
+            
             bool BS = false;
             bool GS = false;
             bool RS = false;

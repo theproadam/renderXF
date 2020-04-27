@@ -35,34 +35,6 @@ namespace renderXF
 
         #endregion
 
-        //const float slope = 2048f / (float)Math.Sqrt(2);
-       // const int addition = 1024;
-
-        void SampleCubemap(Vector3 dir)
-        {
-            int TARGET_X;
-            int TARGET_Y;
-            int* sampleTarget;
-
-            if (dir.x > 0.707102f)
-            {
-                //Right
-
-            }
-            else if (dir.x < -0.707102f)
-            {
-                //Left
-            }
-            else
-            { 
-                //
-              //  TARGET_X = (int)(dir.x * slope) + addition;
-
-            }
-
-
-        }
-
         unsafe void ReflectionShader(byte* BGR, float* DATA, int FaceIndex)
         {
             Vector3 Normal = new Vector3(nbAddr[FaceIndex * 3], nbAddr[FaceIndex * 3 + 1], nbAddr[FaceIndex * 3 + 2]);
