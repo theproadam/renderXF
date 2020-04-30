@@ -192,6 +192,8 @@ namespace renderX2
 
         int _iClear;
         unsafe int* _iptr;
+        unsafe byte* _bptr;
+
 
         unsafe void _2D_Clear(int i)
         {
@@ -199,6 +201,51 @@ namespace renderX2
                 *(_iptr + i * RenderWidth + o) = _iClear;
         }
 
+        unsafe int* _sptr;
+        float _2DScaleX;
+        float _2DScaleY;
+
+        unsafe void _2DScale(int index)
+        {
+            int* tptr = _sptr + scaleWidth * index;
+            int* sptr = _iptr + (int)(index * _2DScaleY * RenderWidth);
+
+            for (int i = 0; i < scaleWidth; ++i)
+            {
+                tptr[i] = sptr[(int)(i * _2DScaleX)];
+            }
+        }
+
+        unsafe void _2DScale2x2(int h)
+        {
+            int* optr = _sptr + h * scaleWidth;
+          //  byte* rptr = _bptr + h * 4 * RenderWidth;
+
+            byte* smplLWR;
+
+            float Y = h * _2DScaleY;
+            int Ys = (int)Y;
+            float Yu = Y - Ys;
+            float Yl = 1f - Yu;
+
+            float R;
+            float G;
+            float B;
+
+            for (int i = 0; i < scaleWidth; ++i)
+            {
+                float X = i * _2DScaleX;
+                int Xs = (int)X;
+                float Xu = X - Xs;
+                float Xl = 1f - Xu;
+
+                smplLWR = _bptr + Ys * RenderWidth + 4 * Xs;
+
+              //  R = smplLWR[0] * Xl + smplLWR[4]
+
+       
+            }
+        }
     }
 
     public enum BlitMethod

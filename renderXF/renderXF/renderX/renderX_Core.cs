@@ -35,6 +35,11 @@ namespace renderX2
         bool ExceptionOverride = false;
         bool miniGLMode = false;
 
+        IntPtr ScaleBuffer;
+        bool scaleBufferInitialized = false;
+        bool isScaling = false;
+        int scaleWidth, scaleHeight;
+
         bool ClickBufferEnabled = false;
         IntPtr ClickBuffer;
         IntPtr AnyBuffer;
@@ -77,6 +82,12 @@ namespace renderX2
                     if (DepthBuffer != IntPtr.Zero)
                         Marshal.FreeHGlobal(DepthBuffer);
 
+                    if (ClickBufferEnabled)
+                        Marshal.FreeHGlobal(ClickBuffer);
+
+                    if (scaleBufferInitialized)
+                        Marshal.FreeHGlobal(ScaleBuffer);
+
                     ReleaseDC(LinkedHandle, TargetDC);
                 }
                 disposed = true;
@@ -91,6 +102,9 @@ namespace renderX2
         /// <param name="OutputHandle">The Handle of the control which will display the output</param>
         public unsafe renderX(int ViewportWidth, int ViewportHeight, IntPtr OutputHandle)
 	    {
+            if (ViewportWidth <= 2 | ViewportHeight <= 2)
+                throw new Exception("Invalid Viewport Size.");
+
             lock (ThreadLock)
             {
                 DrawingBuffer = Marshal.AllocHGlobal(ViewportWidth * ViewportHeight * 4);
@@ -119,6 +133,10 @@ namespace renderX2
         /// <param name="ViewportHeight">The Height of the output in pixels</param>
         public unsafe renderX(int ViewportWidth, int ViewportHeight)
         {
+            if (ViewportWidth <= 2 | ViewportHeight <= 2)
+                throw new Exception("Invalid Viewport Size.");
+
+
             lock (ThreadLock)
             {
                 DrawingBuffer = Marshal.AllocHGlobal(ViewportWidth * ViewportHeight * 4);
@@ -417,7 +435,21 @@ namespace renderX2
 
             lock (ThreadLock)
             {
-                SetDIBitsToDevice(TargetDC, 0, 0, (uint)ops.renderWidth, (uint)ops.renderHeight, 0, 0, 0, (uint)ops.renderHeight, DrawingBuffer, ref BINFO, 0);
+
+                if (!scaleBufferInitialized) SetDIBitsToDevice(TargetDC, 0, 0, (uint)ops.renderWidth, (uint)ops.renderHeight, 0, 0, 0, (uint)ops.renderHeight, DrawingBuffer, ref BINFO, 0);
+                else
+                {
+                    _2DScaleX = (float)RenderWidth / (float)scaleWidth;
+                    _2DScaleY = (float)RenderHeight / (float)scaleHeight;
+                    _sptr = (int*)ScaleBuffer;
+                    _iptr = (int*)DrawingBuffer;
+                    _bptr = (byte*)DrawingBuffer;
+
+                    Parallel.For(0, scaleHeight, _2DScale);
+
+                    SetDIBitsToDevice(TargetDC, 0, 0, (uint)scaleWidth, (uint)scaleHeight, 0, 0, 0, (uint)scaleHeight, ScaleBuffer, ref BINFO, 0);
+                }
+                    
             }
         }
 
@@ -660,6 +692,12 @@ namespace renderX2
         Flip,
         ConvertTo32bpp,
         CopyAlpha
+    }
+
+    public enum InterpolationMethod
+    { 
+        NearestNeighbour,
+        Bilinear
     }
 
     public unsafe class GLBuffer : IDisposable

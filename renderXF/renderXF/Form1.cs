@@ -174,23 +174,16 @@ namespace renderXF
             #endregion
 
             ModelCenter = CalculateCenterOfModel(ref vertexpoints, out DistanceCenter);
-       //     vertexpoints = STLImporter.AverageUpFaceNormalsAndOutputVertexBuffer(Importer.AllTriangles, 45);
+            vertexpoints = STLImporter.AverageUpFaceNormalsAndOutputVertexBuffer(Importer.AllTriangles, 45);
 
             NormalBuffer = new GLBuffer(normalBuffer, 3, MemoryLocation.Heap);
-            VertexBuffer = new GLBuffer(vertexpoints, 3, MemoryLocation.Heap);
+            VertexBuffer = new GLBuffer(vertexpoints, 6, MemoryLocation.Heap);
 
-            StandardShader = new Shader(null, BasicShader, GLRenderMode.TriangleFlat, GLExtraAttributeData.None);
+            StandardShader = new Shader(GouraudShader, null, GLRenderMode.TriangleGouraud, GLExtraAttributeData.None);
+            StandardShader.SetOverrideAttributeCopy(true);
          //   Skybox = new GLCubemap("skybox_data");
 
-        //    GL.SetLinkedWireframe(true, 255, 255, 255);
             
-            
-            //GLTexture myTexture = new GLTexture(infoBitmap, MemoryLocation.Heap, DuringLoad.Flip, DuringLoad.CopyAlpha, DuringLoad.ConvertTo32bpp);
-
-          //  GLFrameBuffer myFrameBuffer = new GLFrameBuffer(GL, 4);
-
-            
-
             #region MemoryAddresses
             nbAddr = (float*)NormalBuffer.GetAddress();
             vertexpoints = null;
@@ -282,6 +275,11 @@ namespace renderXF
             GL.SetFaceCulling(true, false);
 
             #endregion
+
+          //  GL.SetLinkedWireframe(true, 255, 255, 255);
+          //  GL.SetViewportScaling(1920, 1080, InterpolationMethod.NearestNeighbour);
+
+          //  GL.SetLineWidth(0);
 
             #region RenderThreadStart
             RT = new RenderThread(144);
@@ -410,27 +408,20 @@ namespace renderXF
 
             #endregion
 
-            PrepareLightningData();
-
-            GL.ClearDepth();
-
             #region BufferCaching
             bool y = cameraPosition.Equals(lcP) && cameraRotation.Equals(lcR) && Math.Abs(CurrentFOV - TargetFOV) < 0.01f && CMatrix == TMatrix;
             if (!y) readyCache = false;
             #endregion
 
-            ProcessCameraIndicator();
-          
-            
-
-         //   GL.Clear(51, 153, 255);
+            #region Indicator, Buffer Selection, Clearing and LightData
+            PrepareLightningData();
+            ProcessCameraIndicator();          
             GL.Clear();
-            sw.Start();
-         //   GL.DrawSkybox(Skybox);
-            sw.Stop();
+            GL.ClearDepth();
 
             GL.SelectShader(StandardShader);
             GL.SelectBuffer(VertexBuffer);
+            #endregion
 
             if (y & !readyCache & FBCaching)
             {
@@ -440,9 +431,9 @@ namespace renderXF
                 y = false;
             }
 
-         //   sw.Start();
+            sw.Start();
             if (readyCache) GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoop);  else GL.Draw();
-         //   sw.Stop();
+            sw.Stop();
             
             GL.Draw(LineBuffer, LineShader);
             GL.Draw(CubeVBO, cubeShader);
@@ -453,14 +444,7 @@ namespace renderXF
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(0, 0, 1000000), 0, 0, 255);
             #endregion
 
-            GL.SelectShader(VignetteShader);
-            
-          //  sw.Start();
-          //  if (fcull) GL.Pass();
-         //   else GL.VignettePass();
-
           //  GL.VignettePass();
-         //   sw.Stop();
 
             MiniGL.BlitInto(GL, GL.RenderWidth - 130, GL.RenderHeight - 128, Color.FromArgb(255, 0, 0, 0));
 
@@ -468,8 +452,9 @@ namespace renderXF
          //   GL.BlitFrom(infoBitmap, new Rectangle(0, 0, 40, 40), 0, 0);
 
 
-
+            sw.Start();
             GL.Blit();
+            sw.Stop();
 
           //  this.Invoke((Action)delegate() { this.Text = (sw.Elapsed.TotalMilliseconds) + " ms"; });
             this.Invoke((Action)delegate() { this.Text = (1000f / deltaTime) + " FPS, DrawTime: " + sw.Elapsed.TotalMilliseconds + "ms"; });

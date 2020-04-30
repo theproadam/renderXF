@@ -60,14 +60,7 @@ namespace renderX2
         {
             lock (ThreadLock){ ops.FACE_CULL = value; ops.CULL_FRONT = FRONTTRUE_BACKFALSE;} 
         }
-
-        public void SetRenderMode(bool FORWARDTRUE_DEFERREDFALSE)
-        {
-            lock (ThreadLock) { throw new Exception("Not implemented!"); } 
-        }
-
-        
-
+      
         public void SetViewport(IntPtr NewHandle)
         {
             if (miniGLMode)
@@ -106,6 +99,12 @@ namespace renderX2
                         ops.cptr = (int*)ClickBuffer;
                         ops.aptr = (int*)AnyBuffer;
                     }      
+                }
+
+                if (scaleBufferInitialized)
+                {
+                    BINFO.bmiHeader.biWidth = scaleWidth;
+                    BINFO.bmiHeader.biHeight = scaleHeight;
                 }
             }
         }
@@ -425,131 +424,50 @@ namespace renderX2
             ops.UpdateRM(vFOV, hFOV, vSize, hSize, iValue);
         }
 
-        FastBlur F;
-        public void Blur(GLFrameBuffer TargetBuffer)
+        public void SetLineThickness(int Size)
         {
-            lock (TargetBuffer.BufferLock)
+            if (Size <= 0 | Size > 100)
+                throw new Exception("Invalid Size!");
+
+
+        }
+
+        public void InitializeScaleBuffer()
+        {
+            lock (ThreadLock)
             {
-                F = new FastBlur(TargetBuffer.GetAddress(), TargetBuffer.Width, TargetBuffer.Height, 3);
-                F.GaussionBlur();
-            }    
-        }
-    }
-
-    public unsafe sealed class FastBlur
-    {
-        [DllImport("msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
-        static extern IntPtr memcpy(IntPtr dest, IntPtr src, UIntPtr count);
-
-        public FastBlur(IntPtr Target, int Width, int Height, int BytesPerPixel)
-        {
-            rng = 3;
-
-            ptrSrc = (byte*)Marshal.AllocHGlobal(Width * Height * BytesPerPixel);
-            memcpy((IntPtr)ptrSrc, Target, (UIntPtr)(Width * Height * BytesPerPixel));
-            ptrDest = (byte*)Target;
-
-            height = Height;
-            wsd = Width * BytesPerPixel;
-            sD = BytesPerPixel;
-
-            wMax = Width - 1;
-            hMax = Height - 1;
-            width = Width;
-            mSize = (width * Height * BytesPerPixel) - 1;
-        }
-
-        float[] ptrValue2 = new float[] { 
-            0.111096f,	0.111119f,	0.111096f,
-            0.111119f,	0.111141f,	0.111119f,
-            0.111096f,	0.111119f,	0.111096f
-        };
-
-        float[] ptrValue3 = new float[]{    
-0.039206f,	0.039798f,	0.039997f,	0.039798f,	0.039206f,
-0.039798f,	0.040399f,	0.040601f,	0.040399f,	0.039798f,
-0.039997f,	0.040601f,	0.040804f,	0.040601f,	0.039997f,
-0.039798f,	0.040399f,	0.040601f,	0.040399f,	0.039798f,
-0.039206f,	0.039798f,	0.039997f,	0.039798f,	0.039206f
-        };
-
-
-        float[] ptrValue = new float[] { 
-            
-0.020367f,	0.020388f,	0.0204f,	0.020404f,	0.0204f,	0.020388f,	0.020367f,
-0.020388f,	0.020408f,	0.02042f,	0.020424f,	0.02042f,	0.020408f,	0.020388f,
-0.0204f,	0.02042f,	0.020433f,	0.020437f,	0.020433f,	0.02042f,	0.0204f,
-0.020404f,	0.020424f,	0.020437f,	0.020441f,	0.020437f,	0.020424f,	0.020404f,
-0.0204f,	0.02042f,	0.020433f,	0.020437f,	0.020433f,	0.02042f,	0.0204f,
-0.020388f,	0.020408f,	0.02042f,	0.020424f,	0.02042f,	0.020408f,	0.020388f,
-0.020367f,	0.020388f,	0.0204f,	0.020404f,	0.0204f,	0.020388f,	0.020367f
-        };
-        int height;
-        int mSize;
-        int rng;
-
-        byte* ptrSrc;
-        byte* ptrDest;
-
-        int width;
-        int wsd;
-        int sD;
-
-        int wMax;
-        int hMax;
-
-        bool DoDouble = false;
-
-        public void GaussionBlur()
-        {
-            Parallel.For(0, width * height, Blur);
-        }
-
-        public void Blur(int i)
-        {
-            float R = 0;
-            float G = 0;
-            float B = 0;
-
-            int posX = i % width;
-            int posY = i / width;
-
-            int o = 0;
-            for (int h = posY - rng; h <= posY + rng; ++h)
-            {
-                int hc = ClampH(h);
-                for (int w = posX - rng; w <= posX + rng; ++w, ++o)
-                {
-                    int a = wsd * hc + sD * ClampW(w);
-                    B += ptrSrc[a + 0] * ptrValue[o];
-                    G += ptrSrc[a + 1] * ptrValue[o];
-                    R += ptrSrc[a + 2] * ptrValue[o];
-                }
+                if (scaleBufferInitialized)
+                    throw new Exception("A Scale Buffer Already Exists!");
             }
-
-            ptrDest[i * sD + 2] = (byte)R;
-            ptrDest[i * sD + 1] = (byte)G;
-            ptrDest[i * sD + 0] = (byte)B;
         }
 
-        int ClampH(int val)
+        public unsafe void SetViewportScaling(int width, int height, InterpolationMethod iMethod)
         {
-            if (val < 0) return 0;
-            else if (val > hMax) return hMax;
-            else return val;
-        }
+            throw new Exception("feature broken");
 
-        int ClampW(int val)
-        {
-            if (val < 0) return 0;
-            else if (val > wMax) return wMax;
-            else return val;
-        }
+            if (width <= 2 | height <= 2)
+                throw new Exception("Invalid Scaling Size");
 
-        ~FastBlur()
-        {
-            if (DoDouble) Marshal.FreeHGlobal((IntPtr)ptrDest);
-            else Marshal.FreeHGlobal((IntPtr)ptrSrc);
+            lock (ThreadLock)
+            {
+                scaleHeight = height;
+                scaleWidth = width;
+
+                scaleBufferInitialized = true;
+                ScaleBuffer = Marshal.AllocHGlobal(width * height * 4);
+
+                BINFO = new BITMAPINFO();
+                BINFO.bmiHeader.biBitCount = 32; //BITS PER PIXEL
+                BINFO.bmiHeader.biWidth = width;
+                BINFO.bmiHeader.biHeight = height;
+                BINFO.bmiHeader.biPlanes = 1;
+                unsafe
+                {
+                    BINFO.bmiHeader.biSize = (uint)sizeof(BITMAPINFOHEADER);
+                }
+
+               // isScaling = !(width == RenderWidth & height == RenderHeight);
+            }
         }
     }
 
@@ -1043,14 +961,6 @@ namespace renderX2
             bool sxsy = FRONT.Height == FRONT.Width;
 
             return s & w & h & sxsy;
-        }
-    }
-
-    public unsafe class Sample
-    {
-        protected void Reflect()
-        { 
-            
         }
     }
 }

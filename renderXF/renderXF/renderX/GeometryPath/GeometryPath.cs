@@ -44,6 +44,7 @@ namespace renderX2
 
         renderX SourceGL;
 
+        //Camera Rotations: c = cos, s = sin
         float cX;
         float cY;
         float cZ;
@@ -52,6 +53,7 @@ namespace renderX2
         float sY;
         float sZ;
 
+        //Camera Position
         float coX;
         float coY;
         float coZ;
@@ -115,7 +117,7 @@ namespace renderX2
 
         internal bool LinkedWFrame = false;
 
-        internal int lValue;
+        internal int lValue; //Late Wireframe Color
         internal byte dB, dR, dG; //Debug Wireframe Colors
         internal int diValue; //Integer Debug Wireframe Color
 

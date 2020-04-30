@@ -2226,9 +2226,9 @@ namespace renderX2
 
                     for (int o = FromX + 1; o <= ToX; ++o)
                     {
-                        if (cmatrix) s = farZ - (1f / (zBegin) - oValue);
+                        if (cmatrix) s = farZ - (1f / zBegin - oValue);
                         else s = farZ - (zBegin);
-                        zBegin+=slopeZ;
+                        zBegin += slopeZ;
 
                         if (Z_fptr[o] > s) continue;
                         Z_fptr[o] = s;
@@ -3098,7 +3098,7 @@ namespace renderX2
                     if (usingZ & matrixlerpv != 1)
                         for (int b = 0; b < Stride - 3; b++)
                         {
-                            sA = (FROM[2 + b] - TO[2 + b]) / ((1f / FROM[1]) - (1f / TO[1]));
+                            sA = (FROM[2 + b] - TO[2 + b]) / ZDIFF;
                             sB = -sA / FROM[1] + FROM[2 + b];
 
                             slopeAstack[b] = sA;
@@ -3816,10 +3816,7 @@ namespace renderX2
             if (yMin < 0) yMin = 0;
             if (yMax >= renderHeight) yMax = renderHeight - 1;
 
-            float* Intersects = stackalloc float[4 + (Stride - 3) * 5];
-            float* az = Intersects + 4 + (Stride - 3) * 2;
-            float* slopeAstack = az + (Stride - 3);
-            float* bAstack = slopeAstack + (Stride - 3);
+            float* Intersects = stackalloc float[10];
             float s;
 
             float* FROM;
@@ -3831,10 +3828,24 @@ namespace renderX2
             float slopeZ;
             float bZ;
 
-            float sA;
-            float sB;
+            float slopeB;
+            float slopeG;
+            float slopeR;
 
-            for (int i = yMin; i <= yMax; i++)
+            float bB;
+            float bG;
+            float bR;
+
+            int* RGB_iptr;
+            float* Z_fptr;
+
+            float zBegin;
+            float zValue;
+
+            int col;
+            byte* r = (byte*)&col;
+
+            for (int i = yMin + 1; i <= yMax; i++)
             {
                 if (ScanLinePLUS(i, VERTEX_DATA, BUFFER_SIZE, Intersects))
                 {
@@ -3863,42 +3874,66 @@ namespace renderX2
                     if (ZDIFF != 0) usingZ = ZDIFF * ZDIFF >= 0.00001f;
 
                     if (usingZ & matrixlerpv != 1)
-                        for (int b = 0; b < Stride - 3; b++)
-                        {
-                            sA = (FROM[2 + b] - TO[2 + b]) / ((1f / FROM[1]) - (1f / TO[1]));
-                            sB = -sA / FROM[1] + FROM[2 + b];
+                    {
+                        slopeB = (FROM[2] - TO[2]) / ZDIFF;
+                        bB = -slopeB / FROM[1] + FROM[2];
 
-                            slopeAstack[b] = sA;
-                            bAstack[b] = sB;
-                        }
+                        slopeG = (FROM[3] - TO[3]) / ZDIFF;
+                        bG = -slopeG / FROM[1] + FROM[3];
+
+                        slopeR = (FROM[4] - TO[4]) / ZDIFF;
+                        bR = -slopeR / FROM[1] + FROM[4];
+                    }
                     else
-                        for (int b = 0; b < Stride - 3; b++)
-                        {
-                            sA = (FROM[2 + b] - TO[2 + b]) / (FROM[0] - TO[0]);
-                            sB = -sA * FROM[0] + FROM[2 + b];
+                    {
+                        float subd = FROM[0] - TO[0];
 
-                            slopeAstack[b] = sA;
-                            bAstack[b] = sB;
-                        }
+                        slopeB = (FROM[2] - TO[2]) / subd;
+                        bB = -slopeB * FROM[0] + FROM[2];
 
-                    //IF ATTRIBS ARE PLACE ON A XZ FLAT PLANE (IN SCREEN SPACE) THE INTERPOLATION BREAKS!!!
-                    //FOR SOME REASON USING REGULAR LINEAR INTERPOLATION WORKS PERFECTELY OK.
-                    //THE Z VALUES FROM X1 to X2 INTERSECTS SEEMS TO BE EXACTLY THE SAME
+                        slopeG = (FROM[3] - TO[3]) / subd;
+                        bG = -slopeG * FROM[0] + FROM[3];
+
+                        slopeR = (FROM[4] - TO[4]) / subd;
+                        bR = -slopeR * FROM[0] + FROM[4];
+                    }
+
+                    RGB_iptr = iptr + i * renderWidth;
+                    Z_fptr = dptr + i * renderWidth;
+
+                    zBegin = slopeZ * (float)(FromX + 1) + bZ;
+
                     for (int o = FromX + 1; o <= ToX; o++)
                     {
-                        if (cmatrix) s = farZ - (1f / (slopeZ * (float)o + bZ) - oValue);
-                        else s = farZ - (slopeZ * (float)o + bZ);
+                        if (cmatrix)
+                        {
+                            zValue = 1f / zBegin;
+                            s = farZ - zValue + oValue;
+                        }
+                        else {
+                            zValue = zBegin;
+                            s = farZ - zValue;
+                        }
+                              
+                        zBegin += slopeZ;
 
-                        if (dptr[renderWidth * i + o] > s) continue;
-                        dptr[renderWidth * i + o] = s;
+                        if (Z_fptr[o] > s) continue;
+                        Z_fptr[o] = s;
 
-                        if (usingZ & matrixlerpv != 1) for (int z = 0; z < Stride - 3; z++) az[z] = (int)(slopeAstack[z] / (slopeZ * (float)o + bZ) + bAstack[z]);
-                        else for (int z = 0; z < Stride - 3; z++) az[z] = (int)(slopeAstack[z] * (float)o + bAstack[z]);
-                        //int* big performance boost possibility!
+                        if (usingZ & matrixlerpv != 1)
+                        {
+                            r[0] = (byte)(slopeB * zValue + bB);
+                            r[1] = (byte)(slopeG * zValue + bG);
+                            r[2] = (byte)(slopeR * zValue + bR);
+                        }
+                        else
+                        {
+                            r[0] = (byte)(slopeB * (float)o + bB);
+                            r[1] = (byte)(slopeG * (float)o + bG);
+                            r[2] = (byte)(slopeR * (float)o + bR);
+                        }
 
-                        *(bptr + (i * wsD + (o * sD) + 0)) = (byte)az[0];
-                        *(bptr + (i * wsD + (o * sD) + 1)) = (byte)az[1];
-                        *(bptr + (i * wsD + (o * sD) + 2)) = (byte)az[2];
+                        RGB_iptr[o] = col;
 
                         if (WriteClick)
                         {
