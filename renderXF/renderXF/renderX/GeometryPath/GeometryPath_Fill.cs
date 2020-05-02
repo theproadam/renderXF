@@ -542,6 +542,493 @@ namespace renderX2
             // Debug.WriteLine("fw: " + fw + ", fh: " + fh + ", ox: " + ox + ", oy: " + oy);
         }
 
+        public void WireFrameTHICK(int index)
+        {
+            float* VERTEX_DATA = stackalloc float[9 + 3];
+            int BUFFER_SIZE = 3;
+
+            for (int b = 0; b < 3; b++)
+            {
+                float X = *(p + (index * 9 + b * 3)) - cX;
+                float Y = *(p + (index * 9 + b * 3 + 1)) - cY;
+                float Z = *(p + (index * 9 + b * 3 + 2)) - cZ;
+
+                float fiX = (X) * coZ - (Z) * sZ;
+                float fiZ = (Z) * coZ + (X) * sZ;
+                float ndY = (Y) * coY + (fiZ) * sY;
+
+                //Returns the newly rotated Vector
+                *(VERTEX_DATA + b * 3 + 0) = (fiX) * coX - (ndY) * sX;
+                *(VERTEX_DATA + b * 3 + 1) = (ndY) * coX + (fiX) * sX;
+                *(VERTEX_DATA + b * 3 + 2) = (fiZ) * coY - (Y) * sY;
+            }
+            //TODO: Replace RTL_ZERO_MEMORY with a simple loop, it should be much faster
+
+            bool* AP = stackalloc bool[BUFFER_SIZE + 12];
+
+            #region NearPlaneCFG
+            int v = 0;
+
+
+            for (int i = 0; i < BUFFER_SIZE; i++)
+            {
+                if (VERTEX_DATA[i * 3 + 2] < nearZ)
+                {
+                    AP[i] = true;
+                    v++;
+                }
+            }
+
+            if (v == BUFFER_SIZE)
+                return;
+
+            #endregion
+
+            #region NearPlane
+            if (v != 0)
+            {
+                float* strFLT = stackalloc float[BUFFER_SIZE * 3 + 3];
+
+                int API = 0;
+
+                for (int i = 0; i < BUFFER_SIZE; i++)
+                {
+                    if (AP[i])
+                    {
+                        if (i == 0 && !AP[BUFFER_SIZE - 1])
+                        {
+                            FIP(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, nearZ);
+                            API += 3;
+                        }
+                        else if (i > 0 && !AP[i - 1])
+                        {
+                            FIP(strFLT, API, VERTEX_DATA, i - 1, i, nearZ);
+                            API += 3;
+                        }
+                    }
+                    else
+                    {
+                        if (i == 0 && AP[BUFFER_SIZE - 1])
+                        {
+                            FIP(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, nearZ);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else if (i > 0 && AP[i - 1])
+                        {
+                            FIP(strFLT, API, VERTEX_DATA, i - 1, i, nearZ);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else
+                        {
+                            strFLT[API + 0] = VERTEX_DATA[i * 3];
+                            strFLT[API + 1] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 2] = VERTEX_DATA[i * 3 + 2];
+                            API += 3;
+                        }
+                    }
+                }
+
+                BUFFER_SIZE = API / 3;
+                VERTEX_DATA = strFLT;
+                RtlZeroMemory((IntPtr)AP, BUFFER_SIZE);
+            }
+
+            #endregion
+
+            #region FarPlaneCFG
+            v = 0;
+
+            for (int i = 0; i < BUFFER_SIZE; i++)
+            {
+                if (VERTEX_DATA[i * 3 + 2] > farZ)
+                {
+                    AP[i] = true;
+                    v++;
+                }
+            }
+
+            if (v == BUFFER_SIZE)
+                return;
+
+            #endregion
+
+            #region FarPlane
+            if (v != 0)
+            {
+                float* strFLT = stackalloc float[BUFFER_SIZE * 3 + 3];
+                int API = 0;
+                for (int i = 0; i < BUFFER_SIZE; i++)
+                {
+                    if (AP[i])
+                    {
+                        if (i == 0 && !AP[BUFFER_SIZE - 1])
+                        {
+                            FIP(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, farZ);
+                            API += 3;
+                        }
+                        else if (i > 0 && !AP[i - 1])
+                        {
+                            FIP(strFLT, API, VERTEX_DATA, i - 1, i, farZ);
+                            API += 3;
+                        }
+                    }
+                    else
+                    {
+                        if (i == 0 && AP[BUFFER_SIZE - 1])
+                        {
+                            FIP(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, farZ);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else if (i > 0 && AP[i - 1])
+                        {
+                            FIP(strFLT, API, VERTEX_DATA, i - 1, i, farZ);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else
+                        {
+                            strFLT[API + 0] = VERTEX_DATA[i * 3];
+                            strFLT[API + 1] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 2] = VERTEX_DATA[i * 3 + 2];
+                            API += 3;
+                        }
+                    }
+                }
+                VERTEX_DATA = strFLT;
+                BUFFER_SIZE = API / 3;
+                RtlZeroMemory((IntPtr)AP, BUFFER_SIZE);
+            }
+            #endregion
+
+            #region RightFOVCFG
+            v = 0;
+
+            for (int i = 0; i < BUFFER_SIZE; i++)
+            {
+                if (VERTEX_DATA[i * 3 + 2] * tanVert + ow < VERTEX_DATA[i * 3])
+                {
+                    AP[i] = true;
+                    v++;
+                }
+            }
+
+            if (v == BUFFER_SIZE)
+                return;
+            #endregion
+
+            #region RightFOV
+            if (v != 0)
+            {
+                float* strFLT = stackalloc float[BUFFER_SIZE * 3 + 3];
+                int API = 0;
+                for (int i = 0; i < BUFFER_SIZE; i++)
+                {
+                    if (AP[i])
+                    {
+                        if (i == 0 && !AP[BUFFER_SIZE - 1])
+                        {
+                            SIP(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, tanVert);
+                            API += 3;
+                        }
+                        else if (i > 0 && !AP[i - 1])
+                        {
+                            SIP(strFLT, API, VERTEX_DATA, i - 1, i, tanVert);
+                            API += 3;
+                        }
+                    }
+                    else
+                    {
+                        if (i == 0 && AP[BUFFER_SIZE - 1])
+                        {
+                            SIP(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, tanVert);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else if (i > 0 && AP[i - 1])
+                        {
+                            SIP(strFLT, API, VERTEX_DATA, i - 1, i, tanVert);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else
+                        {
+                            strFLT[API + 0] = VERTEX_DATA[i * 3];
+                            strFLT[API + 1] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 2] = VERTEX_DATA[i * 3 + 2];
+                            API += 3;
+                        }
+                    }
+                }
+                VERTEX_DATA = strFLT;
+                BUFFER_SIZE = API / 3;
+                RtlZeroMemory((IntPtr)AP, BUFFER_SIZE);
+            }
+            #endregion
+
+            #region LeftFOVCFG
+            v = 0;
+
+            for (int i = 0; i < BUFFER_SIZE; i++)
+            {
+                if (VERTEX_DATA[i * 3 + 2] * -tanVert - ow > VERTEX_DATA[i * 3])
+                {
+                    AP[i] = true;
+                    v++;
+                }
+
+            }
+
+            if (v == BUFFER_SIZE)
+                return;
+            #endregion
+
+            #region LeftFOV
+            if (v != 0)
+            {
+                float* strFLT = stackalloc float[BUFFER_SIZE * 3 + 3];
+                int API = 0;
+                for (int i = 0; i < BUFFER_SIZE; i++)
+                {
+                    if (AP[i])
+                    {
+                        if (i == 0 && !AP[BUFFER_SIZE - 1])
+                        {
+                            SIP(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, -tanVert, true);
+                            API += 3;
+                        }
+                        else if (i > 0 && !AP[i - 1])
+                        {
+                            SIP(strFLT, API, VERTEX_DATA, i - 1, i, -tanVert, true);
+                            API += 3;
+                        }
+                    }
+                    else
+                    {
+                        if (i == 0 && AP[BUFFER_SIZE - 1])
+                        {
+                            SIP(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, -tanVert, true);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else if (i > 0 && AP[i - 1])
+                        {
+                            SIP(strFLT, API, VERTEX_DATA, i - 1, i, -tanVert, true);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else
+                        {
+                            strFLT[API] = VERTEX_DATA[i * 3];
+                            strFLT[API + 1] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 2] = VERTEX_DATA[i * 3 + 2];
+                            API += 3;
+                        }
+                    }
+                }
+                VERTEX_DATA = strFLT;
+                BUFFER_SIZE = API / 3;
+                RtlZeroMemory((IntPtr)AP, BUFFER_SIZE);
+            }
+            #endregion
+
+            #region TopFOVCFG
+            v = 0;
+
+            for (int i = 0; i < BUFFER_SIZE; i++)
+            {
+                if (VERTEX_DATA[i * 3 + 2] * tanHorz + oh < VERTEX_DATA[i * 3 + 1])
+                {
+                    AP[i] = true;
+                    v++;
+                }
+            }
+
+            if (v == BUFFER_SIZE)
+                return;
+
+            #endregion
+
+            #region TopFOV
+
+            if (v != 0)
+            {
+                float* strFLT = stackalloc float[BUFFER_SIZE * 3 + 3];
+                int API = 0;
+                for (int i = 0; i < BUFFER_SIZE; i++)
+                {
+                    if (AP[i])
+                    {
+                        if (i == 0 && !AP[BUFFER_SIZE - 1])
+                        {
+                            SIPH(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, tanHorz);
+                            API += 3;
+                        }
+                        else if (i > 0 && !AP[i - 1])
+                        {
+                            SIPH(strFLT, API, VERTEX_DATA, i - 1, i, tanHorz);
+                            API += 3;
+                        }
+                    }
+                    else
+                    {
+                        if (i == 0 && AP[BUFFER_SIZE - 1])
+                        {
+                            SIPH(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, tanHorz);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else if (i > 0 && AP[i - 1])
+                        {
+                            SIPH(strFLT, API, VERTEX_DATA, i - 1, i, tanHorz);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else
+                        {
+                            strFLT[API + 0] = VERTEX_DATA[i * 3];
+                            strFLT[API + 1] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 2] = VERTEX_DATA[i * 3 + 2];
+                            API += 3;
+                        }
+                    }
+                }
+                VERTEX_DATA = strFLT;
+                BUFFER_SIZE = API / 3;
+                RtlZeroMemory((IntPtr)AP, BUFFER_SIZE);
+
+
+            }
+
+            #endregion
+
+            #region BottomFOVCFG
+            v = 0;
+
+            for (int i = 0; i < BUFFER_SIZE; i++)
+            {
+                if (VERTEX_DATA[i * 3 + 2] * -tanHorz - oh > VERTEX_DATA[i * 3 + 1])
+                {
+                    AP[i] = true;
+                    v++;
+                }
+            }
+
+            if (v == BUFFER_SIZE)
+                return;
+
+            #endregion
+
+            #region BottomFOV
+            if (v != 0)
+            {
+                float* strFLT = stackalloc float[BUFFER_SIZE * 3 + 3];
+
+                int API = 0;
+                for (int i = 0; i < BUFFER_SIZE; i++)
+                {
+                    if (AP[i])
+                    {
+                        if (i == 0 && !AP[BUFFER_SIZE - 1])
+                        {
+                            SIPH(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, -tanHorz, true);
+                            API += 3;
+                        }
+                        else if (i > 0 && !AP[i - 1])
+                        {
+                            SIPH(strFLT, API, VERTEX_DATA, i - 1, i, -tanHorz, true);
+                            API += 3;
+                        }
+                    }
+                    else
+                    {
+                        if (i == 0 && AP[BUFFER_SIZE - 1])
+                        {
+                            SIPH(strFLT, API, VERTEX_DATA, BUFFER_SIZE - 1, i, -tanHorz, true);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else if (i > 0 && AP[i - 1])
+                        {
+                            SIPH(strFLT, API, VERTEX_DATA, i - 1, i, -tanHorz, true);
+                            strFLT[API + 3] = VERTEX_DATA[i * 3];
+                            strFLT[API + 4] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 5] = VERTEX_DATA[i * 3 + 2];
+                            API += 6;
+                        }
+                        else
+                        {
+                            strFLT[API + 0] = VERTEX_DATA[i * 3];
+                            strFLT[API + 1] = VERTEX_DATA[i * 3 + 1];
+                            strFLT[API + 2] = VERTEX_DATA[i * 3 + 2];
+                            API += 3;
+                        }
+                    }
+                }
+                VERTEX_DATA = strFLT;
+                BUFFER_SIZE = API / 3;
+            }
+            #endregion
+
+            if (LOG_T_COUNT) Interlocked.Increment(ref T_COUNT);
+
+            #region XYZtoXY
+            if (matrixlerpv == 0)
+                for (int im = 0; im < BUFFER_SIZE; im++)
+                {
+                    VERTEX_DATA[im * 3 + 0] = rw + (VERTEX_DATA[im * 3 + 0] / VERTEX_DATA[im * 3 + 2]) * fw;
+                    VERTEX_DATA[im * 3 + 1] = rh + (VERTEX_DATA[im * 3 + 1] / VERTEX_DATA[im * 3 + 2]) * fh;
+                    VERTEX_DATA[im * 3 + 2] = 1f / VERTEX_DATA[im * 3 + 2];
+                }
+            else if (matrixlerpv == 1)
+                for (int im = 0; im < BUFFER_SIZE; im++)
+                {
+                    VERTEX_DATA[im * 3 + 0] = rw + (VERTEX_DATA[im * 3 + 0] / ox);
+                    VERTEX_DATA[im * 3 + 1] = rh + (VERTEX_DATA[im * 3 + 1] / oy);
+                }
+            else
+                for (int im = 0; im < BUFFER_SIZE; im++)
+                {
+                    VERTEX_DATA[im * 3 + 0] = rw + VERTEX_DATA[im * 3 + 0] / ((VERTEX_DATA[im * 3 + 2] * fwi - ox) * (1f - matrixlerpv) + ox);
+                    VERTEX_DATA[im * 3 + 1] = rh + VERTEX_DATA[im * 3 + 1] / ((VERTEX_DATA[im * 3 + 2] * fhi - oy) * (1f - matrixlerpv) + oy);
+
+                    VERTEX_DATA[im * 3 + 2] = 1f / (VERTEX_DATA[im * 3 + 2] + oValue);
+                }
+            #endregion
+
+            for (int i = 0; i < BUFFER_SIZE - 1; i++)
+            {
+                DrawLineTEST(VERTEX_DATA + i * 3, VERTEX_DATA + (i + 1) * 3);
+            }
+
+            DrawLineTEST(VERTEX_DATA, VERTEX_DATA + (BUFFER_SIZE - 1) * 3);
+        }
+
+
         public void WireFrame(int index)
         {
             float* VERTEX_DATA = stackalloc float[Stride * 3];
@@ -549,21 +1036,21 @@ namespace renderX2
 
             for (int b = 0; b < 3; b++)
             {
-                float X = *(p + (index * FaceStride + b * Stride)) - cX;
-                float Y = *(p + (index * FaceStride + b * Stride + 1)) - cY;
-                float Z = *(p + (index * FaceStride + b * Stride + 2)) - cZ;
+                float X = *(p + (index * FaceStride + b * ReadStride)) - cX;
+                float Y = *(p + (index * FaceStride + b * ReadStride + 1)) - cY;
+                float Z = *(p + (index * FaceStride + b * ReadStride + 2)) - cZ;
 
-                float fiX = (X) * coZ - (Z) * sZ;
-                float fiZ = (Z) * coZ + (X) * sZ;
-                float ndY = (Y) * coY + (fiZ) * sY;
+                float fiX = X * coZ - Z * sZ;
+                float fiZ = Z * coZ + X * sZ;
+                float ndY = Y * coY + fiZ * sY;
 
                 //Returns the newly rotated Vector
-                *(VERTEX_DATA + b * Stride + 0) = (fiX) * coX - (ndY) * sX;
-                *(VERTEX_DATA + b * Stride + 1) = (ndY) * coX + (fiX) * sX;
-                *(VERTEX_DATA + b * Stride + 2) = (fiZ) * coY - (Y) * sY;
+                *(VERTEX_DATA + b * Stride + 0) = fiX * coX - ndY * sX;
+                *(VERTEX_DATA + b * Stride + 1) = ndY * coX + fiX * sX;
+                *(VERTEX_DATA + b * Stride + 2) = fiZ * coY - Y * sY;
 
                 for (int a = 3; a < Stride; a++)
-                    VERTEX_DATA[b * Stride + a] = *(p + (index * FaceStride) + b * Stride + a);
+                    VERTEX_DATA[b * Stride + a] = *(p + (index * FaceStride) + b * ReadStride + a);
             }
             //TODO: Replace RTL_ZERO_MEMORY with a simple loop, it should be much faster
             //WARNING: Max faces is actually 12, with 4 intersectspoints coming from one vertex MAX

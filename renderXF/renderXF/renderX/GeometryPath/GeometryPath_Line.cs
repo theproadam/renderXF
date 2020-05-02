@@ -818,5 +818,63 @@ namespace renderX2
             }
         }
 
+        internal unsafe void DrawLineTEST(float* FROM, float* TO)
+        {
+            if (FROM[0] == TO[0] & FROM[1] == TO[1])
+                return;
+
+            float aa = (FROM[0] - TO[0]);
+            float ba = (FROM[1] - TO[1]);
+
+            if (aa * aa >= ba * ba)
+            {
+                float slope = (FROM[1] - TO[1]) / (FROM[0] - TO[0]);
+                float b = -slope * FROM[0] + FROM[1];
+
+                if (FROM[0] < TO[0])
+                    for (int j = -LwrThick; j <= UpprThick; j++)
+                        for (int i = (int)FROM[0]; i <= TO[0]; i++)
+                        {
+                            int tY = (int)(i * slope + b) + j;
+                            if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
+
+                            *(iptr + renderWidth * tY + i) = diValue;
+                        }
+                else
+                    for (int j = -LwrThick; j <= UpprThick; j++)
+                        for (int i = (int)TO[0]; i <= FROM[0]; i++)
+                        {
+                            int tY = (int)(i * slope + b) + j;
+                            if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
+
+                            *(iptr + renderWidth * tY + i) = diValue;
+                        }
+            }
+            else
+            {
+                float slope = (FROM[0] - TO[0]) / (FROM[1] - TO[1]);
+                float b = -slope * FROM[1] + FROM[0];
+
+                if (FROM[1] < TO[1])
+                    for (int j = -LwrThick; j <= UpprThick; j++)
+                        for (int i = (int)FROM[1]; i <= TO[1]; i++)
+                        {
+                            int tY = (int)(i * slope + b) + j;
+                            if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
+
+                            *(iptr + renderWidth * i + tY) = diValue;
+                        }
+                else
+                    for (int j = -LwrThick; j <= UpprThick; j++)
+                        for (int i = (int)TO[1]; i <= FROM[1]; i++)
+                        {
+                            int tY = (int)(i * slope + b) + j;
+                            if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
+
+                            *(iptr + renderWidth * i + tY) = diValue;
+                        }
+
+            }
+        }
     }
 }

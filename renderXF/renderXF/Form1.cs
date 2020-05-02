@@ -174,12 +174,12 @@ namespace renderXF
             #endregion
 
             ModelCenter = CalculateCenterOfModel(ref vertexpoints, out DistanceCenter);
-            vertexpoints = STLImporter.AverageUpFaceNormalsAndOutputVertexBuffer(Importer.AllTriangles, 45);
+         //   vertexpoints = STLImporter.AverageUpFaceNormalsAndOutputVertexBuffer(Importer.AllTriangles, 45);
 
             NormalBuffer = new GLBuffer(normalBuffer, 3, MemoryLocation.Heap);
-            VertexBuffer = new GLBuffer(vertexpoints, 6, MemoryLocation.Heap);
+            VertexBuffer = new GLBuffer(vertexpoints, 3, MemoryLocation.Heap);
 
-            StandardShader = new Shader(GouraudShader, null, GLRenderMode.TriangleGouraud, GLExtraAttributeData.None);
+            StandardShader = new Shader(null, null, GLRenderMode.WireframeDebug, GLExtraAttributeData.None);
             StandardShader.SetOverrideAttributeCopy(true);
          //   Skybox = new GLCubemap("skybox_data");
 
@@ -278,8 +278,9 @@ namespace renderXF
 
           //  GL.SetLinkedWireframe(true, 255, 255, 255);
           //  GL.SetViewportScaling(1920, 1080, InterpolationMethod.NearestNeighbour);
+            GL.SetDebugWireFrameColor(0, 127, 255);
 
-          //  GL.SetLineWidth(0);
+            GL.SetLineThickness(1);
 
             #region RenderThreadStart
             RT = new RenderThread(144);
@@ -735,7 +736,7 @@ namespace renderXF
         {
             if (GL != null)
             {
-                GL.SetViewportSize(this.ClientSize.Width, this.ClientSize.Height);
+                GL.SetViewportSize(this.ClientSize.Width, this.ClientSize.Height);  
                 readyCache = false; 
             }
         }

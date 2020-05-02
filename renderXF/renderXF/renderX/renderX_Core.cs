@@ -252,6 +252,8 @@ namespace renderX2
                     ops.ReadStride = SB.stride;
                     ops.FaceStride = 3 * SB.stride;
 
+                    SafetyCheck(SB.FaceCount);
+
                     //not sure what this is
                     if (ops.Stride == 3)
                         Parallel.For(0, SB.FaceCount, ops.FillFlat);
@@ -276,6 +278,7 @@ namespace renderX2
                     ops.ReadStride = SB.stride;
                     ops.FaceStride = 3 * SB.stride;
 
+                    SafetyCheck(SB.FaceCount);
 
                     Parallel.For(0, SB.FaceCount, ops.WireFrame);
                 }
@@ -296,13 +299,16 @@ namespace renderX2
                     ops.ReadStride = SB.stride;
                     ops.FaceStride = 3 * SB.stride;
 
-
+                    SafetyCheck(SB.FaceCount);
 
                  //   for (int i = 0; i < SB.FaceCount; i++) ops.FillTrueFlat(i);
                     Parallel.For(0, SB.FaceCount, ops.FillTrueFlat);
                 }
                 else if (SelectedShader.sType == GLRenderMode.TriangleFlatCPP)
                 {
+
+                    throw new Exception("Feature Broken!");
+
                     if (SelectedShader.sLevel != GLExtraAttributeData.None)
                         throw new Exception("GLRenderMode.TriangleFlat does not support extra attirbute data. Attribute pointer will be null.");
 
@@ -348,7 +354,7 @@ namespace renderX2
                     ops.ReadStride = SB.stride;
                     ops.FaceStride = 3 * SB.stride;
 
-
+                    SafetyCheck(SB.FaceCount);
 
                     Parallel.For(0, SB.FaceCount, ops.FillGouraud);
                 }
@@ -359,6 +365,10 @@ namespace renderX2
                     ops.ReadStride = SB.stride;
 
                     int b = SB.getifsuspectedline();
+
+                    if ((b - 1) * ops.FaceStride + 2 * ops.ReadStride - 1 >= SB.size)
+                        throw new Exception("Invalid Buffer. Safety Check Failed. Please Ensure Correct Stride Value!");
+
                     Parallel.For(0, b, ops.LineMode);
                 }
                 else if (SelectedShader.sType == GLRenderMode.WireframeDebug)
@@ -368,7 +378,13 @@ namespace renderX2
                     if (SB.stride != 3) 
                         throw new Exception("Wireframe Debug Does Not Support != 3 Stride");
 
-                    Parallel.For(0, SB.FaceCount, ops.WireFrameDebug);
+                    if ((SB.FaceCount - 1) * 9 + 3 * 3 - 1 >= SB.size)
+                        throw new Exception("Invalid Buffer. Safety Check Failed. Please Ensure Correct Stride Value!");
+
+                    if (ops.ThickLine)
+                        Parallel.For(0, SB.FaceCount, ops.WireFrameTHICK);
+                    else
+                        Parallel.For(0, SB.FaceCount, ops.WireFrameDebug);
                 }
 
                 if (RequestCopyAfterDraw)
@@ -619,6 +635,12 @@ namespace renderX2
                 Marshal.FreeHGlobal(SkyboxData);
                 Marshal.FreeHGlobal(SkyboxPointerBuffer);
             }
+        }
+
+        void SafetyCheck(int FaceCount)
+        {
+            if (SB.size <= ((FaceCount - 1) * ops.FaceStride + 3 * ops.ReadStride - 1))
+                throw new Exception("Invalid Buffer. Safety Check Failed. Please Ensure Correct Stride Value!");
         }
 
         internal void GetHWNDandDC(out IntPtr DC, out IntPtr HWND)
@@ -1391,6 +1413,4 @@ namespace renderX2
         }
 
     }
-
-
 }

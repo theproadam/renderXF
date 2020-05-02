@@ -133,6 +133,11 @@ namespace renderX2
         internal float* sdptr;
         internal int skyboxSize;
 
+        //ThickLine Drawing
+        internal bool ThickLine = false;
+        internal int UpprThick;
+        internal int LwrThick;
+
         public GeometryPath(renderX GLSource, int rW, int rH)
         {
             SourceGL = GLSource;
@@ -374,7 +379,6 @@ namespace renderX2
 
         #endregion
 
-        
 
 
 

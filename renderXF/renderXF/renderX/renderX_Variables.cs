@@ -429,7 +429,17 @@ namespace renderX2
             if (Size <= 0 | Size > 100)
                 throw new Exception("Invalid Size!");
 
+            lock (ThreadLock)
+            {
+                if (Size == 1) { 
+                    ops.ThickLine = false;
+                    return;
+                }
 
+                ops.UpprThick = (int)((Size - 1f) / 2f);
+                ops.LwrThick = (int)(Size / 2f);
+                ops.ThickLine = true;
+            }
         }
 
         public void InitializeScaleBuffer()
