@@ -50,8 +50,6 @@ namespace renderXF
         Shader SSRShader;
         Shader SSRShaderPost;
 
-        Shader VignetteShader;
-
         Shader LineShader;
         #endregion
 
@@ -246,7 +244,6 @@ namespace renderXF
             #region Post-Processing
             SSRShader = new Shader(null, SSR_Fragment, GLRenderMode.Triangle, GLExtraAttributeData.XYZ_XY_Both);
 
-            VignetteShader = new Shader(VignettePass);
             SSRShaderPost = new Shader(SSR_Pass);
             #endregion
 
@@ -278,9 +275,11 @@ namespace renderXF
 
           //  GL.SetLinkedWireframe(true, 255, 255, 255);
           //  GL.SetViewportScaling(1920, 1080, InterpolationMethod.NearestNeighbour);
-            GL.SetDebugWireFrameColor(0, 127, 255);
+            GL.SetDebugWireFrameColor(127, 255, 0);
 
-            GL.SetLineThickness(1);
+            GL.SetLineThickness(3);
+
+            GL.InitializeVignetteBuffer(VignetteShader);
 
             #region RenderThreadStart
             RT = new RenderThread(144);
@@ -417,7 +416,7 @@ namespace renderXF
             #region Indicator, Buffer Selection, Clearing and LightData
             PrepareLightningData();
             ProcessCameraIndicator();          
-            GL.Clear();
+            GL.Clear(55, 155, 255);
             GL.ClearDepth();
 
             GL.SelectShader(StandardShader);
@@ -432,9 +431,9 @@ namespace renderXF
                 y = false;
             }
 
-            sw.Start();
+        //    sw.Start();
             if (readyCache) GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoop);  else GL.Draw();
-            sw.Stop();
+         //   sw.Stop();
             
             GL.Draw(LineBuffer, LineShader);
             GL.Draw(CubeVBO, cubeShader);
@@ -445,7 +444,10 @@ namespace renderXF
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(0, 0, 1000000), 0, 0, 255);
             #endregion
 
-          //  GL.VignettePass();
+
+            sw.Start();
+            GL.VignettePass();
+            sw.Stop();
 
             MiniGL.BlitInto(GL, GL.RenderWidth - 130, GL.RenderHeight - 128, Color.FromArgb(255, 0, 0, 0));
 
@@ -453,11 +455,9 @@ namespace renderXF
          //   GL.BlitFrom(infoBitmap, new Rectangle(0, 0, 40, 40), 0, 0);
 
 
-            sw.Start();
             GL.Blit();
-            sw.Stop();
 
-          //  this.Invoke((Action)delegate() { this.Text = (sw.Elapsed.TotalMilliseconds) + " ms"; });
+         //   this.Invoke((Action)delegate() { this.Text = (sw.Elapsed.TotalMilliseconds) + " ms"; });
             this.Invoke((Action)delegate() { this.Text = (1000f / deltaTime) + " FPS, DrawTime: " + sw.Elapsed.TotalMilliseconds + "ms"; });
 
             lcR = cameraRotation;

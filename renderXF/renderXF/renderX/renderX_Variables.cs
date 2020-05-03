@@ -106,6 +106,12 @@ namespace renderX2
                     BINFO.bmiHeader.biWidth = scaleWidth;
                     BINFO.bmiHeader.biHeight = scaleHeight;
                 }
+
+                if (usingVignette)
+                {
+                    VignetteBuffer = Marshal.ReAllocHGlobal(VignetteBuffer, (IntPtr)(ViewportWidth * ViewportHeight * 4));
+                    _2DBuildVignetteBuffer();
+                }
             }
         }
 
@@ -477,6 +483,62 @@ namespace renderX2
                 }
 
                // isScaling = !(width == RenderWidth & height == RenderHeight);
+            }
+        }
+
+        public void InitializeVignetteBuffer(Shader.VignettePass VIGNETTE_PASS)
+        {
+            lock (ThreadLock)
+            {
+                if (usingVignette) 
+                    throw new Exception("An Existing Vignette Buffer Already Exists!");
+
+                VignetteBuffer = Marshal.AllocHGlobal(RenderWidth * RenderHeight * 4);
+
+                VPass = VIGNETTE_PASS;
+
+                _2DBuildVignetteBuffer();
+
+                usingVignette = true;
+            }
+        }
+
+        public void DeinitializeVignetteBuffer()
+        {
+            lock (ThreadLock)
+            {
+                if (!usingVignette)
+                    throw new Exception("No Vignette Buffer Exists!");
+
+                Marshal.FreeHGlobal(VignetteBuffer);
+
+                VPass = null;
+                usingVignette = false;
+            }
+        }
+
+        public void RebuildVignetteBuffer()
+        {
+            lock (ThreadLock)
+            {
+                if (!usingVignette)
+                    throw new Exception("No Vignette Buffer Exists!");
+
+                _2DBuildVignetteBuffer();
+            }
+        }
+
+        public void SwapVignetteMethod(Shader.VignettePass NEW_VIGNETTE_PASS)
+        {
+            lock (ThreadLock)
+            {
+                if (NEW_VIGNETTE_PASS == null)
+                    throw new Exception("Null Method!");
+
+                if (!usingVignette)
+                    throw new Exception("Please Initialize a Buffer First!");
+
+                VPass = NEW_VIGNETTE_PASS;
             }
         }
     }

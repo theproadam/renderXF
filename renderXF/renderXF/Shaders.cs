@@ -67,19 +67,18 @@ namespace renderXF
             //BGR[2] = 255;
         }
 
-        unsafe void VignettePass(byte* BGR, int posX, int posY)
+        
+        unsafe void VignetteShader(float* Opacity, int posX, int posY)
         {
-            float X = (posX / 512f) - 1f;
-            float Y = (posY / 384f) - 1f;
+            float X = (2f * posX / GL.RenderWidth) - 1f;
+            float Y = (2f * posY / GL.RenderHeight) - 1f;
 
             X = 1f - 0.5f * X * X;
             Y = X * (1f - 0.5f * Y * Y);
 
-            BGR[0] = (byte)(BGR[0] * Y);
-            BGR[1] = (byte)(BGR[1] * Y);
-            BGR[2] = (byte)(BGR[2] * Y);
+            *Opacity = Y;
         }
-    
+
         unsafe void UV_FragmentShader(byte* tA, float* test, int InstanceNumber)
         {
             //  tA[0] = (byte)(255 * test[0]);

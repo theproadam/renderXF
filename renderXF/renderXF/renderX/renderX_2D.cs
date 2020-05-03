@@ -134,66 +134,13 @@ namespace renderX2
             }
         }
 
-        public unsafe void VignettePass()
-        {
-            lock (ThreadLock)
-            {
-                srcptr = (byte*)DrawingBuffer;
-                pptr = (float*)DepthBuffer;
-
-                hM = RenderHeight / 2f;
-                vM = RenderWidth / 2f;
-                mp = 1f / vM;
-
-
-                Parallel.For(0, RenderHeight, vPass);
-            }
-            
-        }
-
-        unsafe byte* srcptr;
-        unsafe float* pptr;
-        float hM;
-        float vM;
-        float mp;
-
-        unsafe void vPass(int i)
-        {
-            float X;
-            float Y = (i / hM) - 1f;
-            Y = (1f - 0.5f * Y * Y);
-
-            byte* BGR = srcptr + RenderWidth * 4 * i;
-
-            float m;
-
-            for (int o = 0; o < RenderWidth; o++, BGR+=4)
-            {
-                X = (o * mp) - 1f;
-                m = Y * (1f - 0.5f * X * X);
-
-                BGR[0] = (byte)(BGR[0] * m);
-                BGR[1] = (byte)(BGR[1] * m);
-                BGR[2] = (byte)(BGR[2] * m);
-            }
-        }
-
-        unsafe void testPass(int i)
-        {
-            byte* BGR = srcptr + RenderWidth * 4 * i;
-            float* SRC = pptr + RenderWidth * i;
-            for (int o = 0; o < RenderWidth; o++, BGR += 4, SRC++)
-            {
-                BGR[0] = (byte)(BGR[0] * pptr[0]);
-                BGR[1] = (byte)(BGR[1] * pptr[0]);
-                BGR[2] = (byte)(BGR[2] * pptr[0]);
-            }
-        }
 
         int _iClear;
         unsafe int* _iptr;
         unsafe byte* _bptr;
+        unsafe float* _vptr;
 
+        Shader.VignettePass VPass;
 
         unsafe void _2D_Clear(int i)
         {
@@ -246,6 +193,51 @@ namespace renderX2
        
             }
         }
+
+        unsafe void _2DBuildVignetteBuffer()
+        {
+            _vptr = (float*)VignetteBuffer;
+
+            if (VPass == null)
+                throw new Exception("FATAL ERROR: No Vignette Buffer Method Found. Cannot Build New Vignette Buffer For New Resolution!");
+
+            Parallel.For(0, RenderHeight, i => {
+                for (int o = 0; o < RenderWidth; o++)
+                {
+                    VPass(_vptr + i * RenderWidth + o, o, i);
+                }
+            });
+        }
+
+        public unsafe void VignettePass()
+        {
+            lock (ThreadLock) {
+                if (!usingVignette)
+                    throw new Exception("Please Initialize a Vignette Buffer First!");
+
+                _vptr = (float*)VignetteBuffer;
+                _bptr = (byte*)DrawingBuffer;
+
+                Parallel.For(0, RenderHeight, vPass);
+
+              //  VIGNETTE_DATA(_bptr, _vptr, RenderWidth);
+              //  VIGNETTE_TEST(RenderHeight);
+            } 
+        }
+
+        unsafe void vPass(int yPos)
+        {
+            byte* tpr = _bptr + yPos * RenderWidth * 4;
+            float* vptr = _vptr + yPos * RenderWidth;
+
+            for (int i = 0; i < RenderWidth; ++i, tpr+=4){
+
+                tpr[0] = (byte)(tpr[0] * vptr[i]);
+                tpr[1] = (byte)(tpr[1] * vptr[i]);
+                tpr[2] = (byte)(tpr[2] * vptr[i]);
+            }
+        }
+
     }
 
     public enum BlitMethod

@@ -49,6 +49,9 @@ namespace renderX2
         IntPtr SkyboxData;
         IntPtr SkyboxTexturePointers;
 
+        IntPtr VignetteBuffer;
+        bool usingVignette = false;
+
         [DllImport("AcceleratedFill.dll", CallingConvention = CallingConvention.Cdecl)]
         internal static extern void FillFlatC(int index);
 
@@ -59,7 +62,11 @@ namespace renderX2
         internal static extern void SetFillData(float** sPtr, int* bsPtr, int** txtPtr, int rD, float* sdPtr);
 
 
+        [DllImport("AcceleratedFill.dll", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void VIGNETTE_TEST(long rh);
 
+        [DllImport("AcceleratedFill.dll", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void VIGNETTE_DATA(byte* rgbptr, float* dataptr, int rw);
 
         ~renderX()
         {
@@ -87,6 +94,9 @@ namespace renderX2
 
                     if (scaleBufferInitialized)
                         Marshal.FreeHGlobal(ScaleBuffer);
+
+                    if (usingVignette)
+                        Marshal.FreeHGlobal(VignetteBuffer);
 
                     ReleaseDC(LinkedHandle, TargetDC);
                 }
@@ -643,6 +653,8 @@ namespace renderX2
                 throw new Exception("Invalid Buffer. Safety Check Failed. Please Ensure Correct Stride Value!");
         }
 
+
+
         internal void GetHWNDandDC(out IntPtr DC, out IntPtr HWND)
         {
             DC = TargetDC;
@@ -856,11 +868,12 @@ namespace renderX2
         public delegate void FragmentOperation(byte* BGR_Buffer, float* Attributes, int FaceIndex);
         public delegate void VertexOperation(float* XYZandAttributes_OUT, float* XYZandAttributes_IN, int FaceIndex);
         public delegate void FragmentPass(byte* BGR_Buffer, int posX, int posY);
+        public delegate void VignettePass(float* OpacityValue, int posX, int posY);
 
         internal FragmentOperation ShaderFragment;
         internal VertexOperation ShaderVertex;
         internal FragmentPass ShaderPass;
-
+        
         internal int vShdrAttr = -1;
 
         internal bool manualCamera = false;
