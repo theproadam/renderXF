@@ -2,7 +2,7 @@
 renderXF is a realtime, high performance, software renderer written in c#. Thanks to parallelization, direct memory pointers, bitwise operations, P/Invoke, stack allocation, and many more tricks, renderXF can handle lots of triangles. (350k @ ~6ms vertex processing).
 
 
-renderXF has been also designed to be as simple and user friendly as possible. Becuase of this most of the code is composed of super simple commands, and buffer, shader and framebuffer initialization is also very simple. There is also a [Wiki](https://github.com/theproadam/renderXF/wiki) available to help with a quick start.
+renderXF has been also designed to be as simple and user friendly as possible. Because of this most of the code is composed of super simple commands, and buffer, shader and framebuffer initialization is also very simple. There is also a [Wiki](https://github.com/theproadam/renderXF/wiki) available to help with a quick start.
 
 
 This software renderer is primarily focused on CAD thanks to its buffer caching capability. The current demo uses STL files. Unfortunately it is currently pixel fill rate limited. <br/>
