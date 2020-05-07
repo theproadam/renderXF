@@ -59,10 +59,10 @@ unsafe void FragmentShader(byte* BGR, float* Attributes, int FaceIndex)
 #### Phong Shader: 7980 Triangles, 1920x1017, 23ms
 ![Phong Example](https://i.imgur.com/4YiKSkv.png)
 
-#### Hardcoded Gouraud Shader: 12938 Triangles, 1920x1017, ~6.1ms
+#### Hardcoded Gouraud Shader: 12938 Triangles, 1920x1017, ~6.1ms (as of v0.3.3)
 ![Hardcoded Gouraud Shading Example](https://i.imgur.com/8g3ieII.png) 
 
-#### Hardcoded Gouraud Shader: 7980 Triangles, 1920x1017, ~6.3ms
+#### Hardcoded Gouraud Shader: 7980 Triangles, 1920x1017, ~6.3ms (as of v0.3.3)
 ![Hardcoded Gouraud Shading Example](https://i.imgur.com/2nbCUOs.png)
 
 #### Wireframe Shader: 2208 Triangles, 1920x1017, ~0.47ms
