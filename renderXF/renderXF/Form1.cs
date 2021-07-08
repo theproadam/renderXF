@@ -21,12 +21,13 @@ namespace renderXF
             InitializeComponent();
         }
 
+        Bitmap frameData = new Bitmap(400, 300);
+
         //Essentials
         renderX GL;
         RenderThread RT;
         Stopwatch sw = new Stopwatch();
 
-        GLFrameBuffer Vignette_Buffer;
         GLFrameBuffer SSReflection_Buffer;
 
         #region GLBuffers
@@ -51,7 +52,11 @@ namespace renderXF
         Shader SSRShaderPost;
 
         Shader LineShader;
+
+        Shader DisplayTexture;
         #endregion
+
+        GLTexture texture2d;
 
         #region BufferCaching
         bool FBCaching = false;
@@ -177,11 +182,27 @@ namespace renderXF
             NormalBuffer = new GLBuffer(normalBuffer, 3, MemoryLocation.Heap);
             VertexBuffer = new GLBuffer(vertexpoints, 3, MemoryLocation.Heap);
 
-            StandardShader = new Shader(null, null, GLRenderMode.WireframeDebug, GLExtraAttributeData.None);
-            StandardShader.SetOverrideAttributeCopy(true);
-         //   Skybox = new GLCubemap("skybox_data");
+            NormalBuffer = new GLBuffer(renderX.PrimitiveTypes.CubeNormals(), 3, MemoryLocation.Heap);
+            VertexBuffer = new GLBuffer(renderX.PrimitiveTypes.Cube(), 5, MemoryLocation.Heap);
 
+
+
+            StandardShader = new Shader(null, BasicShader, GLRenderMode.TriangleFlat);
+            StandardShader.SetOverrideAttributeCopy(true);
+           // Skybox = new GLCubemap("skybox_data");
+
+
+            DisplayTexture = new Shader(CubeShader, TextureShader, GLRenderMode.Triangle);
+           // GL.BlitInto
+
+            texture2d = new GLTexture("container2.png", MemoryLocation.Heap, DuringLoad.Flip);
+            TEXTURE_ADDR = (int*)texture2d.GetAddress();
+
+            textureHeight = texture2d.Height;
+            textureWidthMinusOne = texture2d.Width - 1;
+            textureHeightMinusOne = texture2d.Height - 1;
             
+
             #region MemoryAddresses
             nbAddr = (float*)NormalBuffer.GetAddress();
             vertexpoints = null;
@@ -275,11 +296,24 @@ namespace renderXF
 
           //  GL.SetLinkedWireframe(true, 255, 255, 255);
           //  GL.SetViewportScaling(1920, 1080, InterpolationMethod.NearestNeighbour);
-            GL.SetDebugWireFrameColor(127, 255, 0);
+            GL.SetDebugWireFrameColor(255, 255, 255);
+           // GL.SetLineAntiAliasing(true);
+            GL.SetLineAntiAliasing(true);
+            GL.SetLineThickness(1);
+           // GL.SetLineThickness(3);
+         //   GL.SetWireFrameOFFSET(-5000f);
+          
+        //    GL.SetLineAntiAliasing(true);
 
-            GL.SetLineThickness(3);
-
+          //  GL.SetLinkedWireframe(true, 0, 0, 255);
             GL.InitializeVignetteBuffer(VignetteShader);
+
+          //  cameraPosition = new Vector3(-1.16f, 18f, -33.5f);
+         //   cameraRotation = new Vector3(0,0,90);
+
+            cameraPosition = new Vector3(0,0, -50);
+            cameraRotation = new Vector3(0, 0, 0);
+
 
             #region RenderThreadStart
             RT = new RenderThread(144);
@@ -299,6 +333,9 @@ namespace renderXF
             int MouseY = 0;
 
             #endregion
+
+
+         //   GL.Line3D(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 30, 30, 30);
 
             #region CursorPosition
             if (CursorHook)
@@ -403,7 +440,7 @@ namespace renderXF
             #region MatrixInterpolation
             if (Math.Abs(CMatrix - TMatrix) > 0.001f) CMatrix = renderX.Lerp(CMatrix, TMatrix, 0.1f * deltaTimeAdjusted); else CMatrix = TMatrix;           
 
-            GL.SetMatrixData(90, 20, CMatrix);
+            GL.SetMatrixData(90, 160, CMatrix);
             MiniGL.SetMatrixData(90, 350, CMatrix);
 
             #endregion
@@ -415,13 +452,16 @@ namespace renderXF
 
             #region Indicator, Buffer Selection, Clearing and LightData
             PrepareLightningData();
-            ProcessCameraIndicator();          
-            GL.Clear(55, 155, 255);
+            ProcessCameraIndicator();
+            GL.Clear();
+         //   GL.Clear(55, 155, 255);
             GL.ClearDepth();
 
-            GL.SelectShader(StandardShader);
+            GL.SelectShader(DisplayTexture);
             GL.SelectBuffer(VertexBuffer);
             #endregion
+
+            //GL.BlitInto
 
             if (y & !readyCache & FBCaching)
             {
@@ -431,12 +471,14 @@ namespace renderXF
                 y = false;
             }
 
-        //    sw.Start();
+            sw.Start();
             if (readyCache) GL.CopyFromCache(cachedBuffer, CopyMethod.SplitLoop);  else GL.Draw();
-         //   sw.Stop();
+            sw.Stop();
             
-            GL.Draw(LineBuffer, LineShader);
-            GL.Draw(CubeVBO, cubeShader);
+         //   GL.Draw(LineBuffer, LineShader);
+         //   GL.Draw(CubeVBO, cubeShader);
+            
+          //  GL.Clear(255);
 
             #region AxesIndicator
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(1000000, 0, 0), 255, 0, 0);
@@ -444,21 +486,22 @@ namespace renderXF
             GL.Line3D(new Vector3(0, 0, 0), new Vector3(0, 0, 1000000), 0, 0, 255);
             #endregion
 
-
-            sw.Start();
-            GL.VignettePass();
-            sw.Stop();
+          //  sw.Restart();
+        //    GL.VignettePass();
+          //  sw.Stop();
 
             MiniGL.BlitInto(GL, GL.RenderWidth - 130, GL.RenderHeight - 128, Color.FromArgb(255, 0, 0, 0));
 
          //   GL.BlitInto(infoBitmap, new Rectangle(0, 0, 200, 200)); 
          //   GL.BlitFrom(infoBitmap, new Rectangle(0, 0, 40, 40), 0, 0);
-
+            DrawText();
 
             GL.Blit();
 
          //   this.Invoke((Action)delegate() { this.Text = (sw.Elapsed.TotalMilliseconds) + " ms"; });
             this.Invoke((Action)delegate() { this.Text = (1000f / deltaTime) + " FPS, DrawTime: " + sw.Elapsed.TotalMilliseconds + "ms"; });
+         //   this.Invoke((Action)delegate() { this.Text = "pos: " + cameraPosition.ToString() + ", rot: " + cameraRotation.ToString(); });
+
 
             lcR = cameraRotation;
             lcP = cameraPosition;
@@ -605,6 +648,22 @@ namespace renderXF
             if (GS1) CI_Color = CI_Color * 0.5f;
             CI_RAngle = new Vector3(0, 90, 0);
             MiniGL.Draw();
+        }
+
+        void DrawText()
+        {
+            GL.BlitIntoBitmap(frameData, new Point(0, 0), new Rectangle(0, this.ClientSize.Height - 100, 400, 100));
+
+            GL.DeleteTransparency(frameData);
+
+            using (Graphics g = Graphics.FromImage(frameData))
+            {
+                g.DrawString("renderXF v0.3.3", new Font("Consolas", 12), Brushes.White, new Rectangle(0, 0, 200, 200));
+                g.DrawString("XF  : " + 0 + " FPS", new Font("Consolas", 12), Brushes.White, new Rectangle(0, 20, 200, 200));
+
+            }
+
+            GL.BlitFromBitmap(frameData, new Point(0, this.ClientSize.Height - 100), new Rectangle(0, 0, 400, 100));  
         }
 
         #region FormEvents
@@ -755,8 +814,8 @@ namespace renderXF
         private void Form1_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (e.KeyChar == ' '){
-                GL.SetFaceCulling(true, fcull);
-              
+               // GL.SetFaceCulling(true, fcull);
+                GL.SetLineAntiAliasing(fcull);
             //    GL.SetLinkedWireframe(fcull, 255, 255, 255);
                 fcull = !fcull;
                 readyCache = false;

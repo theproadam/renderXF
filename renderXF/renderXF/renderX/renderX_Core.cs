@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace renderX2
 {
@@ -52,6 +54,11 @@ namespace renderX2
         IntPtr VignetteBuffer;
         bool usingVignette = false;
 
+        int colorWire = 0; //DebugWireframe Color
+        int colorLate = 0; //LateWireframe Color
+        int lineSize = 1; //LineSize
+
+        /*
         [DllImport("AcceleratedFill.dll", CallingConvention = CallingConvention.Cdecl)]
         internal static extern void FillFlatC(int index);
 
@@ -67,6 +74,9 @@ namespace renderX2
 
         [DllImport("AcceleratedFill.dll", CallingConvention = CallingConvention.Cdecl)]
         internal static extern void VIGNETTE_DATA(byte* rgbptr, float* dataptr, int rw);
+        */
+
+        bool SuspendRendering = false;
 
         ~renderX()
         {
@@ -214,6 +224,10 @@ namespace renderX2
 
 
             lock(ThreadLock){
+
+                if (SuspendRendering)
+                    return;
+
                 ops.p = SB.ptr;
                 ops.bptr = (byte*)DrawingBuffer;
                 ops.dptr = (float*)DepthBuffer;
@@ -335,12 +349,12 @@ namespace renderX2
                     ops.FaceStride = 3 * SB.stride;
 
 
-                    ops.CPPFill(SB.FaceCount);
+                  //  ops.CPPFill(SB.FaceCount);
 
                   //  for (int i = 0; i < SB.FaceCount; i++) ops.FillWithCPP(i);
                   //  Parallel.For(0, SB.FaceCount, FillFlatC);
 
-                 //   for (int i = 0; i < SB.FaceCount; i++) FillFlatC(i);
+                  //  for (int i = 0; i < SB.FaceCount; i++) FillFlatC(i);
                 }
                 else if (SelectedShader.sType == GLRenderMode.TriangleGouraud)
                 {
@@ -391,10 +405,19 @@ namespace renderX2
                     if ((SB.FaceCount - 1) * 9 + 3 * 3 - 1 >= SB.size)
                         throw new Exception("Invalid Buffer. Safety Check Failed. Please Ensure Correct Stride Value!");
 
-                    if (ops.ThickLine)
-                        Parallel.For(0, SB.FaceCount, ops.WireFrameTHICK);
-                    else
-                        Parallel.For(0, SB.FaceCount, ops.WireFrameDebug);
+                    ops.diValue = colorWire;
+                    int c = colorWire;
+
+                    byte* BGR = (byte*)&c;
+                    ops.dB = BGR[0];
+                    ops.dG = BGR[1];
+                    ops.dR = BGR[2];
+
+
+                    Parallel.For(0, SB.FaceCount, ops.WireFrameDebug);
+
+                //    if (ops.ThickLine) Parallel.For(0, SB.FaceCount, ops.WireFrameTHICK);
+                 //   else Parallel.For(0, SB.FaceCount, ops.WireFrameDebug);
                 }
 
                 if (RequestCopyAfterDraw)
@@ -427,6 +450,9 @@ namespace renderX2
         {
             lock (ThreadLock)
             {
+                if (SuspendRendering)
+                    return;
+
                 if (SelectedShader == null)
                     throw new Exception("No Shader Selected, Cannot Draw!");
 
@@ -436,22 +462,21 @@ namespace renderX2
                 if (SelectedShader.ShaderPass == null)
                     throw new Exception("No post processing delegate attached!");
 
-                b = SelectedShader.ShaderPass;
-                addr = (byte*)DrawingBuffer;
+                PSFunction = SelectedShader.ShaderPass;
+                _bptr = (byte*)DrawingBuffer;
 
-                Parallel.For(0, RenderHeight, delegatetese);
+                Parallel.For(0, RenderHeight, PostShaderPass);
             } 
         }
 
-        Shader.FragmentPass b;
-        byte* addr;
-
-        unsafe void delegatetese(int i)
+        public void BlockDraw()
         {
-            for (int o = 0; o < RenderWidth; o++)
-            {
-                b(addr + i * RenderWidth * 4 + o * 4, o, i);
-            }
+            SuspendRendering = true;
+        }
+
+        public void UnblockDraw()
+        {
+            SuspendRendering = false;
         }
 
         public void Blit()
@@ -501,7 +526,7 @@ namespace renderX2
         public void ClearGradient(byte From, byte To)
         {
             float slope = ((float)From - (float)To) / (0f - (float)RenderHeight);
-            float b= -slope * 0 + (float)From;
+            float b = -slope * 0 + (float)From;
 
             Parallel.For(0, RenderHeight, i => {
                 MemSet(IntPtr.Add(DrawingBuffer, RenderWidth * 4 * i), (byte)(slope * (float)i + b), RenderWidth * 4);
@@ -537,41 +562,102 @@ namespace renderX2
  
         public void Clear(GLFrameBuffer TargetBuffer)
         {
-            if (TargetBuffer == null)
-                throw new Exception("null buffer!");
-
             lock (ThreadLock)
             {
+                if (TargetBuffer == null)
+                    throw new Exception("null buffer!");
+
                 RtlZeroMemory(TargetBuffer.GetAddress(), TargetBuffer.size);
             }
         }
 
         public void Line2D(int x1, int y1, int x2, int y2, byte R, byte G, byte B)
         {
-            ops.bptr = (byte*)DrawingBuffer;
-            ops.dptr = (float*)DepthBuffer;
-            ops.DrawLine(x1, y1, x2, y2, B, G, R);
+            lock (ThreadLock)
+            {
+                ops.bptr = (byte*)DrawingBuffer;
+                ops.dptr = (float*)DepthBuffer;
+                ops.diValue = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
+
+                ops.DrawLine(x1, y1, x2, y2);
+            }
+        }
+
+        public void Line2D(int x1, int y1, int x2, int y2, Shader.FragmentPass LimitedFS)
+        {
+            lock (ThreadLock)
+            {
+                if (SuspendRendering)
+                    return;
+
+                ops.bptr = (byte*)DrawingBuffer;
+                ops.dptr = (float*)DepthBuffer;
+                //ops.diValue = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
+
+                float* LineData = stackalloc float[4];
+                LineData[0] = x1;
+                LineData[1] = y1;
+                LineData[2] = x2;
+                LineData[3] = y2;
+
+                ops.DrawLine(x1, y1, x2, y2);
+            }
         }
 
         public void Line3D(Vector3 From, Vector3 To, byte R, byte G, byte B)
         {
             lock (ThreadLock)
             {
+                if (SuspendRendering)
+                    return;
+
+                int sD = ops.Stride;
+                ops.bptr = (byte*)DrawingBuffer;
+                ops.dptr = (float*)DepthBuffer;
+                ops.iptr = (int*)DrawingBuffer;
+
+                ops.Stride = 3;
+              //  float oV = ops.zoffset;
+
+              //  ops.zoffset = z;
+                ops.diValue = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
+                ops.dR = R; ops.dG = G; ops.dB = B;
+
+                ops.useLineShader = false;
+                ops.DrawLine3D(From, To);
+                ops.Stride = sD;
+
+
+              //  ops.zoffset = oV;
+            }
+        }
+
+        public void Line3D(Vector3 From, Vector3 To, Shader.FragmentOperation FS)
+        {
+            lock (ThreadLock)
+            {
+                if (SuspendRendering)
+                    return;
+
+                if (ops.ThickLine)
+                    throw new NotImplementedException("Feature Not Ready");
+
                 int sD = ops.Stride;
                 ops.bptr = (byte*)DrawingBuffer;
                 ops.dptr = (float*)DepthBuffer;
 
                 ops.Stride = 3;
-                int oi = ops.lValue;
                 float oV = ops.zoffset;
-
                 ops.zoffset = 0;
-                ops.lValue = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
+                
+
+                ops.attribdata = false;
+                ops.ATTRIBLVL = 0;
+                ops.useLineShader = true;
 
                 ops.DrawLine3D(From, To);
                 ops.Stride = sD;
 
-                ops.lValue = oi;
                 ops.zoffset = oV;
 
             }
@@ -653,7 +739,21 @@ namespace renderX2
                 throw new Exception("Invalid Buffer. Safety Check Failed. Please Ensure Correct Stride Value!");
         }
 
+        void CalculateLineThickness(int Size, bool aa, out int uppr, out int lwr)
+        {
+            if (aa)
+            {
+                uppr = (int)Math.Max(((Size - 1f) / 2f) - 1, 0);
+                lwr = (int)Math.Max((Size / 2f) - 1, 0);
+            }
+            else
+            {
+                uppr = (int)((Size - 1f) / 2f);
+                lwr = (int)(Size / 2f);
+            }
 
+
+        }
 
         internal void GetHWNDandDC(out IntPtr DC, out IntPtr HWND)
         {
@@ -672,6 +772,181 @@ namespace renderX2
             Draw = DrawingBuffer;
             Depth = DepthBuffer;
         }
+
+        public unsafe void BlitIntoBitmap(Bitmap TargetBitmap, Point TargetPoint, Rectangle SourceRectangle)
+        {
+            if (TargetBitmap == null)
+                throw new Exception("Target and Sources cannot be null");
+
+            int sD = Image.GetPixelFormatSize(TargetBitmap.PixelFormat) / 8;
+            int bmpWidth = TargetBitmap.Width, bmpHeight = TargetBitmap.Height;
+
+            if (sD != 4)
+                throw new Exception("not yet supported!");
+
+            BitmapData bmpData = TargetBitmap.LockBits(new Rectangle(0, 0, bmpWidth, bmpHeight), ImageLockMode.ReadWrite, TargetBitmap.PixelFormat);
+
+            Rectangle SourceTexture = new Rectangle(0, 0, ops.renderWidth, ops.renderHeight);
+
+            lock (ThreadLock)
+            {
+                //  SourceRectangle.Y = bmpHeight - SourceRectangle.Y - SourceRectangle.Height;
+                SourceRectangle.Y = SourceTexture.Height - SourceRectangle.Y - SourceRectangle.Height;
+
+
+                int startXS = SourceRectangle.X;
+                int startYS = SourceRectangle.Y;
+
+                if (startXS >= SourceTexture.Width || SourceRectangle.X < 0) throw new Exception("SourceSize is not on SourceTexture!");
+                if (startYS >= SourceTexture.Height || SourceRectangle.Y < 0) throw new Exception("SourceSize is not on SourceTexture!");
+
+                if (SourceRectangle.Width < 0 || SourceRectangle.Height < 0) throw new Exception("SourceSize Width/Height cannot be negative!");
+
+                int endXS = SourceRectangle.X + SourceRectangle.Width;
+                int endYS = SourceRectangle.Y + SourceRectangle.Height;
+
+                if (endXS > SourceTexture.Width) throw new Exception("SourceSize Width is not on SourceTexture!");
+                if (endYS > SourceTexture.Height) throw new Exception("SourceSize Height is not on SourceTexture!");
+
+                int startXT = TargetPoint.X;
+                int startYT = TargetPoint.Y;
+
+                if (startXT >= bmpWidth) throw new Exception("TargetPoint is not on Bitmap!");
+                if (startYT >= bmpHeight) throw new Exception("TargetPoint is not on Bitmap!");
+
+                int endXT = TargetPoint.X + SourceRectangle.Width;
+                int endYT = TargetPoint.Y + SourceRectangle.Height;
+
+                if (endXT > bmpWidth) throw new Exception("SourceSize Width is not on SourceTexture!");
+                if (endYT > bmpHeight) throw new Exception("SourceSize Height is not on SourceTexture!");
+
+                int offsetX = TargetPoint.X - SourceRectangle.X;
+                int offsetY = TargetPoint.Y - SourceRectangle.Y;
+
+
+                int hSample = SourceTexture.Height - 1;
+                //   hSample = endYS;
+
+                //  int hOffset = SourceTexture.Height - SourceRectangle.Y - SourceRectangle.Height;
+                //  hSample -= hOffset;
+
+
+                //throw new Exception();
+                //    FastCopy((int*)bmpData.Scan0, (int*)SourceTexture.HEAP_ptr, startXS, endXS, startYS, endYS, SourceTexture.Width, bmpWidth, offsetX, offsetY, hSample);
+                Copy32bpp((int*)bmpData.Scan0, (int*)DrawingBuffer, startXS, endXS, startYS, endYS, SourceTexture.Width, bmpWidth, offsetX, offsetY, hSample);
+
+            }
+
+
+            TargetBitmap.UnlockBits(bmpData);
+        }
+
+        unsafe void Copy32bpp(int* dest, int* src, int w1, int w2, int h1, int h2, int wSrc, int wDest, int wOffset, int hOffset, int hFlip)
+        {
+            Parallel.For(h1, h2, h =>
+            {
+                for (int w = w1; w < w2; ++w)
+                {
+                    dest[(h + hOffset) * wDest + w + wOffset] = src[(hFlip - h) * wSrc + w];
+                }
+            });
+        }
+
+        public unsafe void BlitFromBitmap(Bitmap SourceBitmap, Point TargetPoint, Rectangle SourceRectangle)
+        {
+            if (SourceBitmap == null)
+                throw new Exception("Target and Sources cannot be null");
+
+            int sD = Image.GetPixelFormatSize(SourceBitmap.PixelFormat) / 8;
+            int bmpWidth = SourceBitmap.Width, bmpHeight = SourceBitmap.Height;
+
+            if (sD != 4)
+                throw new Exception("not yet supported!");
+
+            BitmapData bmpData = SourceBitmap.LockBits(new Rectangle(0, 0, bmpWidth, bmpHeight), ImageLockMode.ReadWrite, SourceBitmap.PixelFormat);
+
+            Rectangle TargetTexture = new Rectangle(0, 0, ops.renderWidth, ops.renderHeight);
+
+            lock (ThreadLock)
+            {
+                //   int hDelta = bmpHeight - SourceRectangle.Height;
+                //   SourceRectangle.Y += hDelta;
+
+                SourceRectangle.Y = bmpHeight - SourceRectangle.Y - SourceRectangle.Height;
+
+                int startXS = SourceRectangle.X;
+                int startYS = SourceRectangle.Y;
+
+                if (startXS >= SourceBitmap.Width || SourceRectangle.X < 0) throw new Exception("SourceSize is not on Bitmap!");
+                if (startYS >= SourceBitmap.Height || SourceRectangle.Y < 0) throw new Exception("SourceSize is not on Bitmap!");
+
+                if (SourceRectangle.Width < 0 || SourceRectangle.Height < 0) throw new Exception("SourceSize Width/Height cannot be negative!");
+
+                int endXS = SourceRectangle.X + SourceRectangle.Width;
+                int endYS = SourceRectangle.Y + SourceRectangle.Height;
+
+                if (endXS > SourceBitmap.Width) throw new Exception("SourceSize Width is not on Bitmap!");
+                if (endYS > SourceBitmap.Height) throw new Exception("SourceSize Height is not on Bitmap!");
+
+
+                int startXT = TargetPoint.X;
+                int startYT = TargetPoint.Y;
+
+                if (startXT >= TargetTexture.Width) throw new Exception("TargetPoint is not on Texture!");
+                if (startYT >= TargetTexture.Height) throw new Exception("TargetPoint is not on Texture!");
+
+
+                int endXT = TargetPoint.X + SourceRectangle.Width;
+                int endYT = TargetPoint.Y + SourceRectangle.Height;
+
+                if (endXT > TargetTexture.Width) throw new Exception("SourceSize Width is not on SourceTexture!");
+                if (endYT > TargetTexture.Height) throw new Exception("SourceSize Height is not on SourceTexture!");
+
+                int offsetX = TargetPoint.X - SourceRectangle.X;
+                int offsetY = TargetPoint.Y - SourceRectangle.Y;
+
+                int hSample = bmpHeight - 1;
+
+                //  FastCopy((int*)TargetTexture.HEAP_ptr, (int*)bmpData.Scan0, startXS, endXS, startYS, endYS, SourceBitmap.Width, TargetTexture.Width, offsetX, offsetY, hSample);
+
+
+                Copy32bpp((int*)DrawingBuffer, (int*)bmpData.Scan0, startXS, endXS, startYS, endYS, SourceBitmap.Width, TargetTexture.Width, offsetX, offsetY, hSample);
+            }
+
+            SourceBitmap.UnlockBits(bmpData);
+        }
+
+        public unsafe void DeleteTransparency(Bitmap SourceBitmap)
+        {
+            if (SourceBitmap == null)
+                throw new Exception("Target and Sources cannot be null");
+
+            int sD = Image.GetPixelFormatSize(SourceBitmap.PixelFormat) / 8;
+            int bmpWidth = SourceBitmap.Width, bmpHeight = SourceBitmap.Height;
+
+            if (sD != 4)
+                throw new Exception("not yet supported!");
+
+            BitmapData bmpData = SourceBitmap.LockBits(new Rectangle(0, 0, bmpWidth, bmpHeight), ImageLockMode.ReadWrite, SourceBitmap.PixelFormat);
+
+            lock (ThreadLock)
+            {
+                byte* dest = (byte*)bmpData.Scan0;
+
+                Parallel.For(0, bmpHeight, h => {
+                    int hOffset = h * bmpWidth * 4;
+                    for (int w = 0; w < bmpWidth; ++w)
+                    {
+                        dest[hOffset + w * 4 + 3] = 255;
+                    }
+                });
+            }
+
+            SourceBitmap.UnlockBits(bmpData);
+        }
+
+
+
     }
 
     public enum GLRenderMode
@@ -813,6 +1088,55 @@ namespace renderX2
 
                 for (int i = 0; i < SourceArray.Length; i++){
                     ptr[i] = SourceArray[i];
+                }
+            }
+        }
+
+        public void Resize(renderX GLInstance, float[] SourceArray, int Stride)
+        {
+            lock (GLInstance.ThreadLock)
+            { 
+                if (SourceArray == null || SourceArray.Length == 0)
+                    throw new Exception("Array Cannot Be Null Or Empty");
+                stride = Stride;
+                size = SourceArray.Length;
+                FaceCount = (SourceArray.Length / Stride) / 3;
+
+
+                if (SourceArray.Length % Stride != 0)
+                    throw new Exception("Stride value invalid");
+
+                if (SourceArray.Length % (SourceArray.Length / (float)Stride) / 3f != 0)
+                    suspectedLinearray = true;
+
+                if (Stride < 3)
+                    throw new Exception("Invalid Stride Value");
+
+                if (!STORED_ON_STACK)
+                {
+                    HEAP_ptr = Marshal.ReAllocHGlobal(HEAP_ptr, (IntPtr)(SourceArray.Length * 4));
+                    ptr = (float*)HEAP_ptr;
+
+                    for (int i = 0; i < SourceArray.Length; i++){
+                        ptr[i] = SourceArray[i];
+                    }
+                }
+                else
+                {
+                    T.Abort();
+
+                    T = new Thread(() => ThreadMethod(out ptr, SourceArray.Length), SourceArray.Length * 4 + 1000);
+                    T.Start();
+
+                    while (ptr == null)
+                    {
+                        Thread.Sleep(10);
+                    }
+
+                    for (int i = 0; i < SourceArray.Length; i++)
+                    {
+                        ptr[i] = SourceArray[i];
+                    }
                 }
             }
         }
@@ -1351,6 +1675,13 @@ namespace renderX2
         public static float Magnitude(Vector3 vector)
         {
             return (float)Math.Sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+        }
+
+
+        const float EPSILON = 10E-4f;
+        public bool isApproximately(Vector3 CompareTo)
+        {
+            return Math.Abs(CompareTo.x - x) < EPSILON && Math.Abs(CompareTo.y - y) < EPSILON && Math.Abs(CompareTo.z - z) < EPSILON;
         }
 
         /// <summary>

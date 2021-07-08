@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace renderX2
 {
@@ -104,50 +105,22 @@ namespace renderX2
             Parallel.For(0, RenderHeight, ops.FastCopy);
         }
 
-        public void BlitInto(Bitmap TargetBitmap, Rectangle SourceRectangle)
-        {
-            if (TargetBitmap == null)
-                throw new Exception("TargetBitmap cannot be null!");
-
-            if (Image.GetPixelFormatSize(TargetBitmap.PixelFormat) != 32)
-                throw new Exception("For performance reasons, renderX only supports 32 bits per pixel bitmaps!");
-
-            lock (ThreadLock)
-            {
-                
-                
-            }
-        }
-
-        public void BlitFrom(Bitmap SourceBitmap, Rectangle SourceRectangle, int TargetX, int TargetY)
-        {
-            if (SourceBitmap == null)
-                throw new Exception("TargetBitmap cannot be null!");
-
-            if (Image.GetPixelFormatSize(SourceBitmap.PixelFormat) != 32)
-                throw new Exception("For performance reasons, renderX only supports 32 bits per pixel bitmaps!");
-
-            lock (ThreadLock)
-            {
-
-
-            }
-        }
+       
 
 
         int _iClear;
         unsafe int* _iptr;
         unsafe byte* _bptr;
-        unsafe float* _vptr;
+        
 
-        Shader.VignettePass VPass;
-
+        
         unsafe void _2D_Clear(int i)
         {
             for (int o = 0; o < RenderWidth; o++)
                 *(_iptr + i * RenderWidth + o) = _iClear;
         }
 
+        #region ScalingFunctions
         unsafe int* _sptr;
         float _2DScaleX;
         float _2DScaleY;
@@ -194,6 +167,13 @@ namespace renderX2
             }
         }
 
+        #endregion
+
+        #region VignetteFunctions
+
+        Shader.VignettePass VPass;
+        unsafe float* _vptr;
+
         unsafe void _2DBuildVignetteBuffer()
         {
             _vptr = (float*)VignetteBuffer;
@@ -230,13 +210,32 @@ namespace renderX2
             byte* tpr = _bptr + yPos * RenderWidth * 4;
             float* vptr = _vptr + yPos * RenderWidth;
 
-            for (int i = 0; i < RenderWidth; ++i, tpr+=4){
-
-                tpr[0] = (byte)(tpr[0] * vptr[i]);
-                tpr[1] = (byte)(tpr[1] * vptr[i]);
-                tpr[2] = (byte)(tpr[2] * vptr[i]);
+            float v;
+            for (int i = 0; i < RenderWidth; ++i, tpr+=4)
+            {
+                v = vptr[i];
+                tpr[0] = (byte)(tpr[0] * v);
+                tpr[1] = (byte)(tpr[1] * v);
+                tpr[2] = (byte)(tpr[2] * v);
             }
         }
+
+        #endregion
+
+        #region ScreenSpaceShader
+
+        Shader.FragmentPass PSFunction;
+
+        unsafe void PostShaderPass(int i)
+        {
+            for (int o = 0; o < RenderWidth; o++)
+            {
+                PSFunction(_bptr + i * RenderWidth * 4 + o * 4, o, i);
+            }
+        }
+
+        #endregion
+
 
     }
 

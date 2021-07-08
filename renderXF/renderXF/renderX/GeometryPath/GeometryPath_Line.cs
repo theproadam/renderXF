@@ -8,14 +8,6 @@ namespace renderX2
 {
     internal unsafe partial class GeometryPath
     {
-        void LateWireFrame(float* DATA, int BUFFER_SIZE)
-        {
-            for (int i = 0; i < BUFFER_SIZE - 1; i++)
-                DrawLineLATE(DATA + Stride * i, DATA + Stride * (i + 1));
-
-            DrawLineLATE(DATA, DATA + Stride * (BUFFER_SIZE - 1));
-        }
-
         internal void DrawLine3D(Vector3 T, Vector3 F)
         {
             float* VERTEX_DATA = stackalloc float[6];
@@ -122,7 +114,36 @@ namespace renderX2
                 }
             #endregion
 
-            DrawLineLATE(VERTEX_DATA, VERTEX_DATA + Stride);
+            //Statements
+            if (useLineShader)
+                if (LINE_AA)
+                    if (ThickLine)
+                    {
+
+                    }
+                    else
+                    {
+
+                    }
+                else
+                    if (ThickLine)
+                    {
+
+                    }
+                    else DrawLineDATA(null, null, null, 0);
+            else
+                if (ThickLine) DrawLineTHICK(VERTEX_DATA, VERTEX_DATA + Stride);
+                else {
+                    if (LINE_AA) DrawLineAA(0, 0, 0, 0);
+                    else DrawLineDEPTH(VERTEX_DATA, VERTEX_DATA + Stride);
+                }
+
+
+
+
+            DrawLineTHICK(VERTEX_DATA, VERTEX_DATA + Stride);
+
+       //     DrawLineLATE(VERTEX_DATA, VERTEX_DATA + Stride);
         }
 
         internal unsafe void DrawLineAA(float fromX, float fromY, float toX, float toY)
@@ -133,6 +154,9 @@ namespace renderX2
             // Buffer OverFlow Protection will still be needed regardless how polished the code is...
             float aa = (fromX - toX);
             float ba = (fromY - toY);
+            float ty = 0;
+            int Floor;
+
 
             if (aa * aa > ba * ba)
             {
@@ -142,70 +166,58 @@ namespace renderX2
                 if (fromX < toX)
                     for (int i = (int)fromX; i <= toX; i++)
                     {
-                        float ty = ((float)i * slope + b);
-                        int Floor = (int)ty;
+                        ty = ((float)i * slope + b);
+                        Floor = (int)ty;
+
                         if (i < 0 || Floor < 0 || ty >= renderHeight || i >= renderWidth) continue;
 
-                        float MB = (float)Floor + 1f - ty;
-                        float MT = ty - (float)Floor;
+                        if (LINE_AA) *(iptr + renderWidth * Floor + i) = diValue;
+                        else
+                        {
+                            float MB = (float)Floor + 1f - ty;
+                            float MT = ty - (float)Floor;
 
-                        byte* lptr = bptr + (Floor * wsD + (i * sD));
+                            byte* lptr = bptr + (Floor * wsD + (i * sD));
 
-                        //   *(lptr + 0) = (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
-                        //   *(lptr + 1) = (byte)((*(lptr + 1) * (1f - MB)) + MB * dG);
-                        //    *(lptr + 2) = (byte)((*(lptr + 2) * (1f - MB)) + MB * dR);
+                            *(lptr + 0) = (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
+                            *(lptr + 1) = (byte)((*(lptr + 1) * (1f - MB)) + MB * dG);
+                            *(lptr + 2) = (byte)((*(lptr + 2) * (1f - MB)) + MB * dR);
 
-                        *(iptr + renderWidth * Floor + i) = (((
-                            (byte)((*(lptr + 2) * (1f - MB)) + MB * dR) << 8) |
-                            (byte)((*(lptr + 1) * (1f - MB)) + MB * dG)) << 8) |
-                            (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
+                            if (Floor + 1 >= renderHeight) continue;
+                            lptr = bptr + ((Floor + 1) * wsD + (i * sD));
 
-                        if (Floor + 1 >= renderHeight) continue;
-                        lptr = bptr + ((Floor + 1) * wsD + (i * sD));
-
-                        //   *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MT) + MT * dB);
-                        //   *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MT) + MT * dG);
-                        //   *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MT) + MT * dR);
-
-                        *(iptr + renderWidth * (Floor + 1) + i) = (((
-                            (byte)((*(lptr + 2) * (1f - MT)) + MT * dR) << 8) |
-                            (byte)((*(lptr + 1) * (1f - MT)) + MT * dG)) << 8) |
-                            (byte)((*(lptr + 0) * (1f - MT)) + MT * dB);
-
+                            *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MT) + MT * dB);
+                            *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MT) + MT * dG);
+                            *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MT) + MT * dR);
+                        }
                     }
                 else
                     for (int i = (int)toX; i <= fromX; i++)
                     {
-                        float ty = ((float)i * slope + b);
-                        int Floor = (int)ty;
+                        ty = ((float)i * slope + b);
+                        Floor = (int)ty;
+
                         if (i < 0 || Floor < 0 || ty >= renderHeight || i >= renderWidth) continue;
 
-                        float MB = (float)Floor + 1f - ty;
-                        float MT = ty - (float)Floor;
+                        if (LINE_AA) *(iptr + renderWidth * Floor + i) = diValue;
+                        else
+                        {
+                            float MB = (float)Floor + 1f - ty;
+                            float MT = ty - (float)Floor;
 
-                        byte* lptr = bptr + (Floor * wsD + (i * sD));
+                            byte* lptr = bptr + (Floor * wsD + (i * sD));
 
-                        *(iptr + renderWidth * Floor + i) = (((
-                            (byte)((*(lptr + 2) * (1f - MB)) + MB * dR) << 8) |
-                            (byte)((*(lptr + 1) * (1f - MB)) + MB * dG)) << 8) |
-                            (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
+                            *(lptr + 0) = (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
+                            *(lptr + 1) = (byte)((*(lptr + 1) * (1f - MB)) + MB * dG);
+                            *(lptr + 2) = (byte)((*(lptr + 2) * (1f - MB)) + MB * dR);
 
+                            if (Floor + 1 >= renderHeight) continue;
+                            lptr = bptr + ((Floor + 1) * wsD + (i * sD));
 
-                        // *(lptr + 0) = (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
-                        // *(lptr + 1) = (byte)((*(lptr + 1) * (1f - MB)) + MB * dG);
-                        //  *(lptr + 2) = (byte)((*(lptr + 2) * (1f - MB)) + MB * dR);
-
-                        if (Floor + 1 >= renderHeight) continue;
-                        lptr = bptr + ((Floor + 1) * wsD + (i * sD));
-
-                        //  *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MT) + MT * dB);
-                        //  *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MT) + MT * dG);
-                        //  *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MT) + MT * dR);
-
-                        *(iptr + renderWidth * (Floor + 1) + i) = (((
-                           (byte)((*(lptr + 2) * (1f - MT)) + MT * dR) << 8) |
-                           (byte)((*(lptr + 1) * (1f - MT)) + MT * dG)) << 8) |
-                           (byte)((*(lptr + 0) * (1f - MT)) + MT * dB);
+                            *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MT) + MT * dB);
+                            *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MT) + MT * dG);
+                            *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MT) + MT * dR);
+                        }
                     }
             }
             else
@@ -216,68 +228,59 @@ namespace renderX2
                 if (fromY < toY)
                     for (int i = (int)fromY; i <= toY; i++)
                     {
-                        float ty = ((float)i * slope + b);
-                        int Floor = (int)ty;
+                        ty = ((float)i * slope + b);
+                        Floor = (int)ty;
+
                         if (i < 0 || Floor < 0 || Floor >= renderWidth || i >= renderHeight) continue;
 
-                        float MB = (float)Floor + 1f - ty;
-                        float MT = ty - (float)Floor;
+                        if (LINE_AA) *(iptr + renderWidth * i + Floor) = diValue;
+                        else
+                        {
+                            float MB = (float)Floor + 1f - ty;
+                            float MT = ty - (float)Floor;
 
-                        byte* lptr = bptr + (i * wsD + (Floor * sD));
+                            byte* lptr = bptr + (i * wsD + (Floor * sD));
 
-                        //   *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MB) + MB * dB);
-                        //   *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MB) + MB * dG);
-                        //   *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MB) + MB * dR);
+                            *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MB) + MB * dB);
+                            *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MB) + MB * dG);
+                            *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MB) + MB * dR);
 
-                        *(iptr + renderWidth * i + Floor) = (((
-                            (byte)((*(lptr + 2) * (1f - MB)) + MB * dR) << 8) |
-                            (byte)((*(lptr + 1) * (1f - MB)) + MB * dG)) << 8) |
-                            (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
 
-                        if (Floor + 1 >= renderWidth) continue;
+                            if (Floor + 1 >= renderWidth) continue;
 
-                        lptr = bptr + (i * wsD + ((Floor + 1) * sD));
-                        //   *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MT) + MT * dB);
-                        //    *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MT) + MT * dG);
-                        //    *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MT) + MT * dR);
-
-                        *(iptr + renderWidth * i + Floor + 1) = (((
-                           (byte)((*(lptr + 2) * (1f - MT)) + MT * dR) << 8) |
-                           (byte)((*(lptr + 1) * (1f - MT)) + MT * dG)) << 8) |
-                           (byte)((*(lptr + 0) * (1f - MT)) + MT * dB);
+                            lptr = bptr + (i * wsD + ((Floor + 1) * sD));
+                            *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MT) + MT * dB);
+                            *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MT) + MT * dG);
+                            *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MT) + MT * dR);
+                        }
                     }
                 else
                     for (int i = (int)toY; i <= fromY; i++)
                     {
-                        float ty = ((float)i * slope + b);
-                        int Floor = (int)ty;
+                        ty = ((float)i * slope + b);
+                        Floor = (int)ty;
+
                         if (i < 0 || Floor < 0 || Floor >= renderWidth || i >= renderHeight) continue;
 
-                        float MB = (float)Floor + 1f - ty;
-                        float MT = ty - (float)Floor;
+                        if (LINE_AA) *(iptr + renderWidth * i + Floor) = diValue;
+                        else
+                        {
+                            float MB = (float)Floor + 1f - ty;
+                            float MT = ty - (float)Floor;
 
-                        byte* lptr = bptr + (i * wsD + (Floor * sD));
+                            byte* lptr = bptr + (i * wsD + (Floor * sD));
 
-                        //  *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MB) + MB * dB);
-                        //  *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MB) + MB * dG);
-                        //  *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MB) + MB * dR);
+                            *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MB) + MB * dB);
+                            *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MB) + MB * dG);
+                            *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MB) + MB * dR);
 
-                        *(iptr + renderWidth * i + Floor) = (((
-                            (byte)((*(lptr + 2) * (1f - MB)) + MB * dR) << 8) |
-                            (byte)((*(lptr + 1) * (1f - MB)) + MB * dG)) << 8) |
-                            (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
+                            if (Floor + 1 >= renderWidth) continue;
 
-                        if (Floor + 1 >= renderWidth) continue;
-
-                        lptr = bptr + (i * wsD + ((Floor + 1) * sD));
-                        // *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MT) + MT * dB);
-                        // *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MT) + MT * dG);
-                        // *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MT) + MT * dR);
-
-                        *(iptr + renderWidth * i + Floor + 1) = (((
-                           (byte)((*(lptr + 2) * (1f - MT)) + MT * dR) << 8) |
-                           (byte)((*(lptr + 1) * (1f - MT)) + MT * dG)) << 8) |
-                           (byte)((*(lptr + 0) * (1f - MT)) + MT * dB);
+                            lptr = bptr + (i * wsD + ((Floor + 1) * sD));
+                            *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MT) + MT * dB);
+                            *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MT) + MT * dG);
+                            *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MT) + MT * dR);
+                        }
                     }
             }
         }
@@ -340,77 +343,7 @@ namespace renderX2
             }
         }
 
-        internal unsafe void DrawLine(float fromX, float fromY, float toX, float toY, byte B, byte G, byte R)
-        {
-            if (fromX == toX & fromY == toY)
-                return;
-
-            // Buffer OverFlow Protection will still be needed regardless how polished the code is...
-            float aa = (fromX - toX);
-            float ba = (fromY - toY);
-
-            if (aa * aa > ba * ba)
-            {
-                float slope = (fromY - toY) / (fromX - toX);
-                float b = -slope * fromX + fromY;
-
-                if (fromX < toX)
-                    for (int i = (int)fromX; i <= toX; i++)
-                    {
-                        int tY = (int)(i * slope + b);
-
-                        if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
-
-                        *(bptr + (tY * wsD + (i * sD) + 0)) = B;
-                        *(bptr + (tY * wsD + (i * sD) + 1)) = G;
-                        *(bptr + (tY * wsD + (i * sD) + 2)) = R;
-
-                    }
-                else
-                    for (int i = (int)toX; i <= fromX; i++)
-                    {
-                        int tY = (int)(i * slope + b);
-
-                        if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
-
-                        *(bptr + (tY * wsD + (i * sD) + 0)) = B;
-                        *(bptr + (tY * wsD + (i * sD) + 1)) = G;
-                        *(bptr + (tY * wsD + (i * sD) + 2)) = R;
-
-                    }
-            }
-            else
-            {
-                float slope = (fromX - toX) / (fromY - toY);
-                float b = -slope * fromY + fromX;
-
-                if (fromY < toY)
-                    for (int i = (int)fromY; i <= toY; i++)
-                    {
-                        int tY = (int)(i * slope + b);
-                        if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
-
-                        *(bptr + (i * wsD + (tY * sD) + 0)) = B;
-                        *(bptr + (i * wsD + (tY * sD) + 1)) = G;
-                        *(bptr + (i * wsD + (tY * sD) + 2)) = R;
-                    }
-                else
-
-
-                    for (int i = (int)toY; i <= fromY; i++)
-                    {
-                        int tY = (int)(i * slope + b);
-
-                        if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
-
-                        *(bptr + (i * wsD + (tY * sD) + 0)) = B;
-                        *(bptr + (i * wsD + (tY * sD) + 1)) = G;
-                        *(bptr + (i * wsD + (tY * sD) + 2)) = R;
-                    }
-            }
-        }
-
-        internal unsafe void DrawLineFull(float* FromDATA, float* ToDATA, float* ScratchSpace, int Index)
+        internal unsafe void DrawLinePLUS(float* FromDATA, float* ToDATA)
         {
             if (FromDATA[0] == ToDATA[0] & FromDATA[1] == ToDATA[1])
                 return;
@@ -418,98 +351,54 @@ namespace renderX2
             float aa = (FromDATA[0] - ToDATA[0]);
             float ba = (FromDATA[1] - ToDATA[1]);
 
-            // throw new Exception("BREAK POINT");
             if (aa * aa > ba * ba)
             {
-                float slope = (FromDATA[1] - ToDATA[1]) / (FromDATA[0] - ToDATA[0]);
+                float slope = ba / aa;
                 float b = -slope * FromDATA[0] + FromDATA[1];
-
-                float slopeZ = (FromDATA[2] - ToDATA[2]) / (FromDATA[0] - ToDATA[0]);
-                float bZ = -slopeZ * FromDATA[0] + FromDATA[2];
-
-                for (int s = 3; s < Stride; s++)
-                {
-                    ScratchSpace[(s - 3) * 2] = (FromDATA[s] - ToDATA[s]) / (1f / FromDATA[2] - 1f / ToDATA[3]);
-                    ScratchSpace[(s - 3) * 2 + 1] = -ScratchSpace[(s - 3) * 2] / FromDATA[2] + ToDATA[s];
-                }
 
                 if (FromDATA[0] < ToDATA[0])
                     for (int i = (int)FromDATA[0]; i <= ToDATA[0]; i++)
                     {
                         int tY = (int)(i * slope + b);
-                        float s = farZ - (1f / ((slopeZ * (float)i + bZ)));
                         if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
 
-                        if (dptr[renderWidth * tY + i] > s - zoffset) continue;
-                        dptr[renderWidth * tY + i] = s;
-
-                        for (int z = 0; z < Stride - 3; z++)
-                            ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
-
-                        FS(bptr + (tY * wsD + (i * sD)), ScratchSpace + (Stride - 3) * 2, Index);
+                        *(iptr + renderWidth * tY + i) = diValue;
                     }
                 else
                     for (int i = (int)ToDATA[0]; i <= FromDATA[0]; i++)
                     {
                         int tY = (int)(i * slope + b);
-                        float s = farZ - (1f / ((slopeZ * (float)i + bZ)));
                         if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
 
-                        if (dptr[renderWidth * tY + i] > s - zoffset) continue;
-                        dptr[renderWidth * tY + i] = s;
-
-                        for (int z = 0; z < Stride - 3; z++)
-                            ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
-
-                        FS(bptr + (tY * wsD + (i * sD)), ScratchSpace + (Stride - 3) * 2, Index);
+                        *(iptr + renderWidth * tY + i) = diValue;
                     }
             }
             else
             {
-                float slope = (FromDATA[0] - ToDATA[0]) / (FromDATA[1] - ToDATA[1]);
+                float slope = aa / ba;
                 float b = -slope * FromDATA[1] + FromDATA[0];
-
-                float slopeZ = (FromDATA[2] - ToDATA[2]) / (FromDATA[1] - ToDATA[1]);
-                float bZ = -slopeZ * FromDATA[1] + FromDATA[2];
-
-                for (int s = 3; s < Stride; s++)
-                {
-                    ScratchSpace[(s - 3) * 2] = (FromDATA[s] - ToDATA[s]) / (1f / FromDATA[2] - 1f / ToDATA[3]);
-                    ScratchSpace[(s - 3) * 2 + 1] = -ScratchSpace[(s - 3) * 2] / FromDATA[2] + ToDATA[s];
-                }
 
                 if (FromDATA[1] < ToDATA[1])
                     for (int i = (int)FromDATA[1]; i <= ToDATA[1]; i++)
                     {
                         int tY = (int)(i * slope + b);
-                        float s = farZ - (1f / ((slopeZ * (float)i + bZ)));
                         if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
 
-                        if (dptr[renderWidth * i + tY] > s - zoffset) continue;
-                        dptr[renderWidth * i + tY] = s;
-
-                        for (int z = 0; z < Stride - 3; z++)
-                            ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
-
-                        FS(bptr + (i * wsD + (tY * sD)), ScratchSpace + (Stride - 3) * 2, Index);
+                        *(iptr + renderWidth * i + tY) = diValue;
                     }
                 else
                     for (int i = (int)ToDATA[1]; i <= FromDATA[1]; i++)
                     {
                         int tY = (int)(i * slope + b);
-                        float s = farZ - (1f / ((slopeZ * (float)i + bZ)));
                         if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
 
-                        if (dptr[renderWidth * i + tY] > s - zoffset) continue;
-                        dptr[renderWidth * i + tY] = s;
-
-                        for (int z = 0; z < Stride - 3; z++)
-                            ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
-
-                        FS(bptr + (i * wsD + (tY * sD)), ScratchSpace + (Stride - 3) * 2, Index);
+                        *(iptr + renderWidth * i + tY) = diValue;
                     }
+
             }
         }
+
+
 
         internal unsafe void DrawLineDATA(float* FromDATA, float* ToDATA, float* ScratchSpace, int Index)
         {
@@ -536,20 +425,27 @@ namespace renderX2
                     ScratchSpace[(s - 3) * 2 + 1] = -ScratchSpace[(s - 3) * 2] / FromDATA[2] + ToDATA[s];
                 }
 
-                if (FromDATA[0] < ToDATA[0])
-                    for (int i = (int)FromDATA[0]; i <= ToDATA[0]; i++)
-                    {
-                        int tY = (int)(i * slope + b);
-                        if (cmatrix) zz = (1f / (slopeZ * (float)i + bZ) - oValue);
-                        else zz = (slopeZ * (float)i + bZ);
-                        //  float zz = (1f / ((slopeZ * (float)i + bZ)));
+                if (FromDATA[0] > ToDATA[0])
+                {
+                    float* temp = ToDATA;
+                    ToDATA = FromDATA;
+                    FromDATA = temp;
+                }
 
-                        float s = farZ - zz;
-                        if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
+                for (int i = (int)FromDATA[0]; i <= ToDATA[0]; i++)
+                {
+                    int tY = (int)(i * slope + b);
+                    if (cmatrix) zz = (1f / (slopeZ * (float)i + bZ) - oValue);
+                    else zz = (slopeZ * (float)i + bZ);
+                    //  float zz = (1f / ((slopeZ * (float)i + bZ)));
 
-                        if (dptr[renderWidth * tY + i] > s - zoffset) continue;
-                        dptr[renderWidth * tY + i] = s;
+                    float s = farZ - zz;
+                    if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
 
+                    if (dptr[renderWidth * tY + i] > s - zoffset) continue;
+                    dptr[renderWidth * tY + i] = s;
+
+                    if (attribdata)
                         if (ATTRIBLVL == 3)
                         {
                             ATB[0] = ((zz * fwi - ox) * matrixlerpo + ox) * (i - rw);
@@ -574,54 +470,12 @@ namespace renderX2
                             ATB[0] = zz;
                         }
 
-                        for (int z = 0; z < Stride - 3; z++)
-                            ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
+                    for (int z = 0; z < Stride - 3; z++)
+                        ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
 
-                        FS(bptr + (tY * wsD + (i * sD)), ScratchSpace + (Stride - 3) * 2, Index);
-                    }
-                else
-                    for (int i = (int)ToDATA[0]; i <= FromDATA[0]; i++)
-                    {
-                        int tY = (int)(i * slope + b);
-                        if (cmatrix) zz = (1f / (slopeZ * (float)i + bZ) - oValue);
-                        else zz = (slopeZ * (float)i + bZ);
+                    FS(bptr + (tY * wsD + (i * sD)), ScratchSpace + (Stride - 3) * 2, Index);
+                }    
 
-                        float s = farZ - zz;
-
-                        if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
-
-                        if (dptr[renderWidth * tY + i] > s - zoffset) continue;
-                        dptr[renderWidth * tY + i] = s;
-
-                        if (ATTRIBLVL == 3)
-                        {
-                            ATB[0] = ((zz * fwi - ox) * matrixlerpo + ox) * (i - rw);
-                            ATB[1] = ((zz * fhi - oy) * matrixlerpo + oy) * (tY - rh);
-                            ATB[2] = zz;
-                        }
-                        else if (ATTRIBLVL == 5)
-                        {
-                            ATB[0] = ((i - rw) / fw) * zz;
-                            ATB[1] = ((tY - rh) / fh) * zz;
-                            ATB[2] = zz;
-                            ATB[3] = i;
-                            ATB[4] = tY;
-                        }
-                        else if (ATTRIBLVL == 2)
-                        {
-                            ATB[0] = i;
-                            ATB[1] = tY;
-                        }
-                        else if (ATTRIBLVL == 1)
-                        {
-                            ATB[0] = zz;
-                        }
-
-                        for (int z = 0; z < Stride - 3; z++)
-                            ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
-
-                        FS(bptr + (tY * wsD + (i * sD)), ScratchSpace + (Stride - 3) * 2, Index);
-                    }
             }
             else
             {
@@ -637,20 +491,27 @@ namespace renderX2
                     ScratchSpace[(s - 3) * 2 + 1] = -ScratchSpace[(s - 3) * 2] / FromDATA[2] + ToDATA[s];
                 }
 
-                if (FromDATA[1] < ToDATA[1])
-                    for (int i = (int)FromDATA[1]; i <= ToDATA[1]; i++)
-                    {
-                        int tY = (int)(i * slope + b);
+                if (FromDATA[1] > ToDATA[1])
+                {
+                    float* temp = ToDATA;
+                    ToDATA = FromDATA;
+                    FromDATA = temp;
+                }
 
-                        if (cmatrix) zz = (1f / (slopeZ * (float)i + bZ) - oValue);
-                        else zz = (slopeZ * (float)i + bZ);
+                for (int i = (int)FromDATA[1]; i <= ToDATA[1]; i++)
+                {
+                    int tY = (int)(i * slope + b);
 
-                        float s = farZ - zz;
-                        if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
+                    if (cmatrix) zz = (1f / (slopeZ * (float)i + bZ) - oValue);
+                    else zz = (slopeZ * (float)i + bZ);
 
-                        if (dptr[renderWidth * i + tY] > s - zoffset) continue;
-                        dptr[renderWidth * i + tY] = s;
+                    float s = farZ - zz;
+                    if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
 
+                    if (dptr[renderWidth * i + tY] > s - zoffset) continue;
+                    dptr[renderWidth * i + tY] = s;
+
+                    if (attribdata)
                         if (ATTRIBLVL == 3)
                         {
                             ATB[0] = ((zz * fwi - ox) * matrixlerpo + ox) * (tY - rw);
@@ -675,59 +536,15 @@ namespace renderX2
                             ATB[0] = zz;
                         }
 
-                        for (int z = 0; z < Stride - 3; z++)
-                            ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
+                    for (int z = 0; z < Stride - 3; z++)
+                        ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
 
-                        FS(bptr + (i * wsD + (tY * sD)), ScratchSpace + (Stride - 3) * 2, Index);
-                    }
-                else
-                    for (int i = (int)ToDATA[1]; i <= FromDATA[1]; i++)
-                    {
-                        int tY = (int)(i * slope + b);
-                        if (cmatrix) zz = (1f / (slopeZ * (float)i + bZ) - oValue);
-                        else zz = (slopeZ * (float)i + bZ);
-
-                        float s = farZ - zz;
-                        if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
-
-
-
-                        if (dptr[renderWidth * i + tY] > s - zoffset) continue;
-                        dptr[renderWidth * i + tY] = s;
-
-                        if (ATTRIBLVL == 3)
-                        {
-                            ATB[0] = ((zz * fwi - ox) * matrixlerpo + ox) * (tY - rw);
-                            ATB[1] = ((zz * fhi - oy) * matrixlerpo + oy) * (i - rh);
-                            ATB[2] = zz;
-                        }
-                        else if (ATTRIBLVL == 5)
-                        {
-                            ATB[0] = ((zz * fwi - ox) * matrixlerpo + ox) * (tY - rw);
-                            ATB[1] = ((zz * fhi - oy) * matrixlerpo + oy) * (i - rh);
-                            ATB[2] = zz;
-                            ATB[3] = i;
-                            ATB[4] = tY;
-                        }
-                        else if (ATTRIBLVL == 2)
-                        {
-                            ATB[0] = tY;
-                            ATB[1] = i;
-                        }
-                        else if (ATTRIBLVL == 1)
-                        {
-                            ATB[0] = zz;
-                        }
-
-                        for (int z = 0; z < Stride - 3; z++)
-                            ScratchSpace[(Stride - 3) * 2 + z] = (ScratchSpace[z * 2] / (slopeZ * (float)i + bZ) + ScratchSpace[z * 2 + 1]);
-
-                        FS(bptr + (i * wsD + (tY * sD)), ScratchSpace + (Stride - 3) * 2, Index);
-                    }
+                    FS(bptr + (i * wsD + (tY * sD)), ScratchSpace + (Stride - 3) * 2, Index);
+                }
             }
         }
 
-        internal unsafe void DrawLineLATE(float* FromDATA, float* ToDATA)
+        internal unsafe void DrawLineDEPTH(float* FromDATA, float* ToDATA)
         {
             if (FromDATA[0] == ToDATA[0] & FromDATA[1] == ToDATA[1])
                 return;
@@ -735,7 +552,8 @@ namespace renderX2
             float aa = (FromDATA[0] - ToDATA[0]);
             float ba = (FromDATA[1] - ToDATA[1]);
 
-            //throw new Exception("BREAK POINT");
+            int addr;
+
             if (aa * aa > ba * ba)
             {
                 float slope = (FromDATA[1] - ToDATA[1]) / (float)((int)FromDATA[0] - (int)ToDATA[0]);
@@ -755,10 +573,12 @@ namespace renderX2
 
                         if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
 
-                        if (dptr[renderWidth * tY + i] > s - zoffset) continue;
-                        dptr[renderWidth * tY + i] = s;
+                        addr = renderWidth * tY + i;
 
-                        *(iptr + tY * renderWidth + i) = lValue;
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+
+                        *(iptr + addr) = diValue;
                     }
                 else
                     for (int i = (int)ToDATA[0]; i <= (int)FromDATA[0]; i++)
@@ -770,10 +590,12 @@ namespace renderX2
 
                         if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
 
-                        if (dptr[renderWidth * tY + i] > s - zoffset) continue;
-                        dptr[renderWidth * tY + i] = s;
+                        addr = renderWidth * tY + i;
 
-                        *(iptr + tY * renderWidth + i) = lValue;
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+
+                        *(iptr + addr) = diValue;
                     }
             }
             else
@@ -795,10 +617,12 @@ namespace renderX2
 
                         if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
 
-                        if (dptr[renderWidth * i + tY] > s - zoffset) continue;
-                        dptr[renderWidth * i + tY] = s;
+                        addr = i * renderWidth + tY;
 
-                        *(iptr + i * renderWidth + tY) = lValue;
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+
+                        *(iptr + addr) = diValue;
                     }
                 else
                     for (int i = (int)ToDATA[1]; i <= (int)FromDATA[1]; i++)
@@ -810,69 +634,199 @@ namespace renderX2
 
                         if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
 
-                        if (dptr[renderWidth * i + tY] > s - zoffset) continue;
-                        dptr[renderWidth * i + tY] = s;
+                        addr = i * renderWidth + tY;
 
-                        *(iptr + i * renderWidth + tY) = lValue;
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+
+                        *(iptr + addr) = diValue;
                     }
             }
         }
 
-        internal unsafe void DrawLineTEST(float* FROM, float* TO)
+        internal unsafe void DrawLineTHICK(float* FROM, float* TO)
         {
             if (FROM[0] == TO[0] & FROM[1] == TO[1])
                 return;
 
             float aa = (FROM[0] - TO[0]);
             float ba = (FROM[1] - TO[1]);
+            int Floor;
+            float ty;
+
+            float s;
+            int addr;
 
             if (aa * aa >= ba * ba)
             {
                 float slope = (FROM[1] - TO[1]) / (FROM[0] - TO[0]);
                 float b = -slope * FROM[0] + FROM[1];
 
-                if (FROM[0] < TO[0])
-                    for (int j = -LwrThick; j <= UpprThick; j++)
-                        for (int i = (int)FROM[0]; i <= TO[0]; i++)
-                        {
-                            int tY = (int)(i * slope + b) + j;
-                            if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
+                float slopeZ = (FROM[2] - TO[2]) / (FROM[0] - TO[0]);
+                float bZ = -slopeZ * FROM[0] + FROM[2];
 
-                            *(iptr + renderWidth * tY + i) = diValue;
-                        }
-                else
-                    for (int j = -LwrThick; j <= UpprThick; j++)
-                        for (int i = (int)TO[0]; i <= FROM[0]; i++)
-                        {
-                            int tY = (int)(i * slope + b) + j;
-                            if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
+                if (FROM[0] > TO[0])
+                {
+                    float* temp = FROM;
+                    FROM = TO;
+                    TO = temp;
+                }
 
-                            *(iptr + renderWidth * tY + i) = diValue;
-                        }
+                if (LINE_AA)
+                {
+                    for (int i = (int)FROM[0]; i <= TO[0]; i++)
+                    {
+                        ty = ((float)i * slope + b) - LwrThick - 1f;
+                        Floor = (int)ty;
+
+                        if (cmatrix) s = farZ - (1f / (slopeZ * (float)i + bZ) - oValue);
+                        else s = farZ - (slopeZ * (float)i + bZ);
+
+                        if (i < 0 || Floor < 0 || ty >= renderHeight || i >= renderWidth) continue;
+
+                        addr = renderWidth * Floor + i;
+
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+
+                        float MB = (float)Floor + 1f - ty;
+
+                        byte* lptr = bptr + (Floor * wsD + (i * sD));
+
+                            *(lptr + 0) = (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
+                            *(lptr + 1) = (byte)((*(lptr + 1) * (1f - MB)) + MB * dG);
+                            *(lptr + 2) = (byte)((*(lptr + 2) * (1f - MB)) + MB * dR);
+                    }
+
+                    for (int i = (int)FROM[0]; i <= TO[0]; i++)
+                    {
+                        ty = ((float)i * slope + b) + UpprThick + 1f;
+                        Floor = (int)ty;
+
+                        if (cmatrix) s = farZ - (1f / (slopeZ * (float)i + bZ) - oValue);
+                        else s = farZ - (slopeZ * (float)i + bZ);
+
+                        if (i < 0 || Floor < 0 || Floor >= renderHeight || i >= renderWidth) continue;
+
+                        addr = renderWidth * Floor + i;
+
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+
+                        float MB = ty - (float)Floor;
+                        byte* lptr = bptr + (Floor * wsD + (i * sD));
+
+                            *(lptr + 0) = (byte)((*(lptr + 0) * (1f - MB)) + MB * dB);
+                            *(lptr + 1) = (byte)((*(lptr + 1) * (1f - MB)) + MB * dG);
+                            *(lptr + 2) = (byte)((*(lptr + 2) * (1f - MB)) + MB * dR);
+                    }
+                }
+
+                for (int j = -LwrThick; j <= UpprThick; j++)
+                    for (int i = (int)FROM[0]; i <= TO[0]; i++)
+                    {
+                        int tY = (int)(i * slope + b) + j;
+
+                        if (cmatrix) s = farZ - (1f / (slopeZ * (float)i + bZ) - oValue);
+                        else s = farZ - (slopeZ * (float)i + bZ);
+
+                        if (i < 0 || tY < 0 || tY >= renderHeight || i >= renderWidth) continue;
+
+                        addr = renderWidth * tY + i;
+
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+
+                        *(iptr + addr) = diValue;
+                    }
+                
             }
             else
             {
                 float slope = (FROM[0] - TO[0]) / (FROM[1] - TO[1]);
                 float b = -slope * FROM[1] + FROM[0];
 
-                if (FROM[1] < TO[1])
-                    for (int j = -LwrThick; j <= UpprThick; j++)
-                        for (int i = (int)FROM[1]; i <= TO[1]; i++)
-                        {
-                            int tY = (int)(i * slope + b) + j;
-                            if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
+                float slopeZ = (FROM[2] - TO[2]) / (FROM[1] - TO[1]);
+                float bZ = -slopeZ * FROM[1] + FROM[2];
 
-                            *(iptr + renderWidth * i + tY) = diValue;
-                        }
-                else
-                    for (int j = -LwrThick; j <= UpprThick; j++)
-                        for (int i = (int)TO[1]; i <= FROM[1]; i++)
-                        {
-                            int tY = (int)(i * slope + b) + j;
-                            if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
 
-                            *(iptr + renderWidth * i + tY) = diValue;
-                        }
+                if (FROM[1] > TO[1])
+                {
+                    float* temp = FROM;
+                    FROM = TO;
+                    TO = temp;
+                }
+
+
+                if (LINE_AA)
+                {
+                    for (int i = (int)FROM[1]; i <= TO[1]; i++)
+                    {
+                        ty = ((float)i * slope + b) - LwrThick - 1f;
+                        Floor = (int)ty;
+
+                        if (i < 0 || Floor < 0 || Floor >= renderWidth || i >= renderHeight) continue;
+
+                        if (cmatrix) s = farZ - (1f / (slopeZ * (float)i + bZ) - oValue);
+                        else s = farZ - (slopeZ * (float)i + bZ);
+
+                        addr = i * renderWidth + Floor;
+
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+
+                        float MB = (float)Floor + 1f - ty;
+                        float MT = ty - (float)Floor;
+
+                        byte* lptr = bptr + (i * wsD + (Floor * sD));
+
+                        *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MB) + MB * dB);
+                        *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MB) + MB * dG);
+                        *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MB) + MB * dR);
+                    }
+
+                    for (int i = (int)FROM[1]; i <= TO[1]; i++)
+                    {
+                        ty = ((float)i * slope + b) + UpprThick + 1f;
+                        Floor = (int)ty;
+
+                        if (i < 0 || Floor < 0 || Floor >= renderWidth || i >= renderHeight) continue;
+
+                        if (cmatrix) s = farZ - (1f / (slopeZ * (float)i + bZ) - oValue);
+                        else s = farZ - (slopeZ * (float)i + bZ);
+
+                        addr = i * renderWidth + Floor;
+
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+                        
+                        float MB = ty - (float)Floor;
+
+                        byte* lptr = bptr + (i * wsD + (Floor * sD));
+
+                           *(lptr + 0) = (byte)(*(lptr + 0) * (1f - MB) + MB * dB);
+                           *(lptr + 1) = (byte)(*(lptr + 1) * (1f - MB) + MB * dG);
+                           *(lptr + 2) = (byte)(*(lptr + 2) * (1f - MB) + MB * dR);
+                    }
+                }
+
+                for (int j = -LwrThick; j <= UpprThick; j++)
+                    for (int i = (int)FROM[1]; i <= TO[1]; i++)
+                    {
+                        int tY = (int)(i * slope + b) + j;
+                       
+                        if (cmatrix) s = farZ - (1f / (slopeZ * (float)i + bZ) - oValue);
+                        else s = farZ - (slopeZ * (float)i + bZ);
+
+                        if (i < 0 || tY < 0 || tY >= renderWidth || i >= renderHeight) continue;
+
+                        addr = i * renderWidth + tY;
+
+                        if (dptr[addr] > s - zoffset) continue;
+                        dptr[addr] = s;
+
+                        *(iptr + addr) = diValue;
+                    }
 
             }
         }

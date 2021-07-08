@@ -23,14 +23,14 @@ namespace renderX2
                 float Y = *(p + (index * 9 + b * 3 + 1)) - cY;
                 float Z = *(p + (index * 9 + b * 3 + 2)) - cZ;
 
-                float fiX = (X) * coZ - (Z) * sZ;
-                float fiZ = (Z) * coZ + (X) * sZ;
-                float ndY = (Y) * coY + (fiZ) * sY;
+                float fiX = X * coZ - Z * sZ;
+                float fiZ = Z * coZ + X * sZ;
+                float ndY = Y * coY + fiZ * sY;
 
                 //Returns the newly rotated Vector
-                *(VERTEX_DATA + b * 3 + 0) = (fiX) * coX - (ndY) * sX;
-                *(VERTEX_DATA + b * 3 + 1) = (ndY) * coX + (fiX) * sX;
-                *(VERTEX_DATA + b * 3 + 2) = (fiZ) * coY - (Y) * sY;
+                *(VERTEX_DATA + b * 3 + 0) = fiX * coX - ndY * sX;
+                *(VERTEX_DATA + b * 3 + 1) = ndY * coX + fiX * sX;
+                *(VERTEX_DATA + b * 3 + 2) = fiZ * coY - Y * sY;
             }
             //TODO: Replace RTL_ZERO_MEMORY with a simple loop, it should be much faster
 
@@ -1022,12 +1022,11 @@ namespace renderX2
 
             for (int i = 0; i < BUFFER_SIZE - 1; i++)
             {
-                DrawLineTEST(VERTEX_DATA + i * 3, VERTEX_DATA + (i + 1) * 3);
+                DrawLineTHICK(VERTEX_DATA + i * 3, VERTEX_DATA + (i + 1) * 3);
             }
 
-            DrawLineTEST(VERTEX_DATA, VERTEX_DATA + (BUFFER_SIZE - 1) * 3);
+            DrawLineTHICK(VERTEX_DATA, VERTEX_DATA + (BUFFER_SIZE - 1) * 3);
         }
-
 
         public void WireFrame(int index)
         {
@@ -1622,11 +1621,9 @@ namespace renderX2
             float* sSpace = stackalloc float[(Stride - 3) * 3];
 
             for (int im = 1; im < BUFFER_SIZE; im++)
-            {
-                DrawLineFull(VERTEX_DATA + im * Stride, VERTEX_DATA + (im - 1) * Stride, sSpace, index);
-            }
-
-            DrawLineFull(VERTEX_DATA, VERTEX_DATA + (BUFFER_SIZE - 1) * Stride, sSpace, index);
+                DrawLineDATA(VERTEX_DATA + im * Stride, VERTEX_DATA + (im - 1) * Stride, sSpace, index);
+            
+            DrawLineDATA(VERTEX_DATA, VERTEX_DATA + (BUFFER_SIZE - 1) * Stride, sSpace, index);
         }
 
         public void FillFlat(int index)
@@ -2714,7 +2711,7 @@ namespace renderX2
                     for (int o = FromX + 1; o <= ToX; ++o)
                     {
                         if (cmatrix) s = farZ - (1f / zBegin - oValue);
-                        else s = farZ - (zBegin);
+                        else s = farZ - zBegin;
                         zBegin += slopeZ;
 
                         if (Z_fptr[o] > s) continue;
@@ -2814,7 +2811,7 @@ namespace renderX2
                             float slopeO = -1f / (RX1 - RX2);
                             float bO = -slopeO * RX2;
 
-                            DrawLine(LX1, i, LX2, i, 255, 0, 255);
+                          //  DrawLine(LX1, i, LX2, i, 255, 0, 255);
 
                             if (RX2 > RX1)
                                 for (int o = RX1; o <= RX2; o++)
@@ -2882,6 +2879,12 @@ namespace renderX2
 
             if (LinkedWFrame) LateWireFrame(VERTEX_DATA, BUFFER_SIZE);
         }
+
+        int FastInt(float R, float G, float B)
+        {
+	        return (byte)B + 256 * (byte)G + (byte)R * 65536;
+        }
+
 
         public void FillFull(int index)
         {
@@ -3528,6 +3531,8 @@ namespace renderX2
             }
             #endregion
 
+            int RW = renderWidth;
+
             if (LOG_T_COUNT) Interlocked.Increment(ref T_COUNT);
 
             if (yMin < 0) yMin = 0;
@@ -3577,6 +3582,10 @@ namespace renderX2
 
                     if (ToX >= renderWidth) TO[0] = renderWidth - 1;
                     if (FromX < 0) FROM[0] = 0;
+
+               //     *(iptr + i * RW + FromX) = FastInt(FROM[2] * 127.5f + 127.5f, FROM[3] * 127.5f + 127.5f, FROM[4] * 127.5f + 127.5f);
+                ///    *(iptr + i * RW + ToX) = FastInt(TO[2] * 127.5f + 127.5f, TO[3] * 127.5f + 127.5f, TO[4] * 127.5f + 127.5f);
+                //    return;
 
                     float ZDIFF = 1f / FROM[1] - 1f / TO[1];
                     bool usingZ = ZDIFF != 0;
@@ -3644,8 +3653,8 @@ namespace renderX2
                                 RTNA[0] = zz;
                             }
 
-                            if (usingZ & matrixlerpv != 1) for (int z = 0; z < Stride - 3; z++) az[z] = (int)(slopeAstack[z] / (slopeZ * (float)o + bZ) + bAstack[z]);
-                            else for (int z = 0; z < Stride - 3; z++) az[z] = (int)(slopeAstack[z] * (float)o + bAstack[z]);
+                            if (usingZ & matrixlerpv != 1) for (int z = 0; z < Stride - 3; z++) az[z] = (slopeAstack[z] / (slopeZ * (float)o + bZ) + bAstack[z]);
+                            else for (int z = 0; z < Stride - 3; z++) az[z] = (slopeAstack[z] * (float)o + bAstack[z]);
                         
 
                             //   SF((bptr + (i * wsD + (o * sD) + 0)), index);
@@ -3664,8 +3673,8 @@ namespace renderX2
                             if (dptr[renderWidth * i + o] > s) continue;
                             dptr[renderWidth * i + o] = s;
 
-                            if (usingZ & matrixlerpv != 1) for (int z = 0; z < Stride - 3; z++) az[z] = (int)(slopeAstack[z] / (slopeZ * (float)o + bZ) + bAstack[z]);
-                            else for (int z = 0; z < Stride - 3; z++) az[z] = (int)(slopeAstack[z] * (float)o + bAstack[z]);
+                            if (usingZ & matrixlerpv != 1) for (int z = 0; z < Stride - 3; z++) az[z] = (slopeAstack[z] / (slopeZ * (float)o + bZ) + bAstack[z]);
+                            else for (int z = 0; z < Stride - 3; z++) az[z] = (slopeAstack[z] * (float)o + bAstack[z]);
                         
                             //   SF((bptr + (i * wsD + (o * sD) + 0)), index);
                             FS((bptr + (i * wsD + (o * sD) + 0)), az, index);
@@ -5293,9 +5302,10 @@ namespace renderX2
                 }
             #endregion
 
-            // DrawLineLATE(VERTEX_DATA, VERTEX_DATA + Stride);
-            if (attribdata) DrawLineDATA(VERTEX_DATA, VERTEX_DATA + Stride, Sspace, index);
-            else DrawLineFull(VERTEX_DATA, VERTEX_DATA + Stride, Sspace, index);
+            DrawLineDATA(VERTEX_DATA, VERTEX_DATA + Stride, Sspace, index);
+          //  if (attribdata) DrawLineDATA(VERTEX_DATA, VERTEX_DATA + Stride, Sspace, index);
+          //  else
+            //DrawLineFull(VERTEX_DATA, VERTEX_DATA + Stride, Sspace, index);
         }
     }
 }

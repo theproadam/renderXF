@@ -212,7 +212,7 @@ namespace renderX2
             lock (ThreadLock)
             {
                 ops.LinkedWFrame = value;
-                ops.lValue = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
+                ops.diValue = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
             }
         }
 
@@ -264,10 +264,7 @@ namespace renderX2
         {
             lock (ThreadLock)
             {
-                ops.dR = r;
-                ops.dG = g;
-                ops.dB = b;
-                ops.diValue = ((((((byte)0 << 8) | (byte)r) << 8) | (byte)g) << 8) | (byte)b; //ARGB Values
+                colorWire = ((((((byte)0 << 8) | (byte)r) << 8) | (byte)g) << 8) | (byte)b; //ARGB Values
             }
         }
 
@@ -367,7 +364,14 @@ namespace renderX2
             lock (ThreadLock)
             {
                 ops.LINE_AA = Value;
+
+                CalculateLineThickness(lineSize, ops.LINE_AA, out ops.UpprThick, out ops.LwrThick);       
             }
+        }
+
+        public void SetLineAntiAliasingTransparency(bool Value)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -442,8 +446,9 @@ namespace renderX2
                     return;
                 }
 
-                ops.UpprThick = (int)((Size - 1f) / 2f);
-                ops.LwrThick = (int)(Size / 2f);
+                CalculateLineThickness(Size, ops.LINE_AA, out ops.UpprThick, out ops.LwrThick);
+               
+                lineSize = Size;
                 ops.ThickLine = true;
             }
         }

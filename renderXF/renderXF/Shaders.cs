@@ -19,7 +19,7 @@ namespace renderXF
         Vector3 objColor = new Vector3(255f / 255f, 79f / 255f, 79f / 255f);
         Vector3 lightColor = new Vector3(0.8f, 0.8f, 0.8f);
 
-        float ambientStrength = 0.05f;
+        float ambientStrength = 0.1f;
         float specularStrength = 0.7f;
 
         Vector3 lightPositionInCameraSpace;
@@ -104,6 +104,34 @@ namespace renderXF
 
         }
 
+        unsafe void CubeShader(float* OUT, float* IN, int InstanceID)
+        {
+            OUT[0] = IN[0] * 50;
+            OUT[1] = IN[1] * 50;
+            OUT[2] = IN[2] * 50;
+            OUT[3] = IN[3];
+            OUT[4] = IN[4];
+            OUT[5] = IN[5];
+
+        }
+
+        int* TEXTURE_ADDR;
+        int textureWidthMinusOne;
+        int textureHeightMinusOne;
+        int textureHeight;
+
+        unsafe void TextureShader(byte* BGR, float* Attributes, int FaceIndex)
+        {
+            int U = (int)(Clamp01(Attributes[0]) * textureWidthMinusOne);
+            int V = (int)(Clamp01(Attributes[1]) * textureHeightMinusOne);
+
+            int* iptr = (int*)BGR;
+
+
+            *iptr = TEXTURE_ADDR[U + V * textureHeight];
+            
+        }
+
         unsafe void BasicShader(byte* BGR, float* Attributes, int FaceIndex)
         {
             Vector3 iNormals = new Vector3(nbAddr[FaceIndex * 3], nbAddr[FaceIndex * 3 + 1], nbAddr[FaceIndex * 3 + 2]);
@@ -159,11 +187,9 @@ namespace renderXF
         unsafe void GouraudShader(float* OUT, float* IN, int FaceIndex)
         {
             Vector3 fragPos = new Vector3(IN[0], IN[1], IN[2]);
-            Vector3 iNormals = new Vector3(IN[3], IN[4], IN[5]);
-           // Vector3 iNormals = new Vector3(nbAddr[FaceIndex * 3], nbAddr[FaceIndex * 3 + 1], nbAddr[FaceIndex * 3 + 2]);
-            iNormals = GL.RotateCameraSpace(iNormals);
+           // Vector3 iNormals = new Vector3(IN[3], IN[4], IN[5]);
+            Vector3 iNormals = new Vector3(nbAddr[FaceIndex * 3], nbAddr[FaceIndex * 3 + 1], nbAddr[FaceIndex * 3 + 2]);
 
-         //   Vector3 lpos = GL.RotateToCameraSpace(lightPosition);
 
             Vector3 norm = Vector3.Normalize(iNormals);
             Vector3 lightDir = Vector3.Normalize(lightPosition - fragPos);
@@ -172,7 +198,7 @@ namespace renderXF
 
             Vector3 viewDir = Vector3.Normalize(cameraPosition -fragPos);
             Vector3 reflectDir = Vector3.Reflect(-lightDir, norm);
-            float spec = (float)Math.Pow(Math.Max(Vector3.Dot(viewDir, reflectDir), 0f), 128);
+            float spec = (float)Math.Pow(Math.Max(Vector3.Dot(viewDir, reflectDir), 0f), 8);
             Vector3 specular = specularStrength * spec * lightColor;
 
             Vector3 result = (ambient + diffuse + specular) * objColor;

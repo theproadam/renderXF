@@ -117,9 +117,9 @@ namespace renderX2
 
         internal bool LinkedWFrame = false;
 
-        internal int lValue; //Late Wireframe Color
+       // internal int lValue; //Late Wireframe Color
         internal byte dB, dR, dG; //Debug Wireframe Colors
-        internal int diValue; //Integer Debug Wireframe Color
+        internal int diValue; //Integer Wireframe Color
 
         //AntiAliasing Data
         internal bool LINE_AA = false;
@@ -137,6 +137,9 @@ namespace renderX2
         internal bool ThickLine = false;
         internal int UpprThick;
         internal int LwrThick;
+
+        //LineDrawing
+        internal bool useLineShader = false;
 
         public GeometryPath(renderX GLSource, int rW, int rH)
         {
@@ -216,7 +219,7 @@ namespace renderX2
         internal void UpdateRM(float vFOV, float hFOV, float vSize, float hSize, float iValue)
         {
             float radsFOV = vFOV / 57.2958f;
-            float radsFOVh = hFOV / 57.2958f; 
+            float radsFOVh = hFOV / 57.2958f;
 
             float fovCoefficient = (float)Math.Tan((Math.PI / 2) - (radsFOV / 2f));
             float hFovCoefficient = (float)Math.Tan((Math.PI / 2f) - (radsFOVh / 2f));
@@ -380,7 +383,13 @@ namespace renderX2
         #endregion
 
 
+        void LateWireFrame(float* DATA, int BUFFER_SIZE)
+        {
+            for (int i = 0; i < BUFFER_SIZE - 1; i++)
+                DrawLineDEPTH(DATA + Stride * i, DATA + Stride * (i + 1));
 
+            DrawLineDEPTH(DATA, DATA + Stride * (BUFFER_SIZE - 1));
+        }
 
         unsafe bool ScanLine(int Line, float* TRIS_DATA, int TRIS_SIZE, float* Intersects)
         {

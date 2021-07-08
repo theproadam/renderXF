@@ -405,10 +405,6 @@ namespace renderX2
             float cosX = (float)Math.Cos(RADS.z); //0
             float cosY = (float)Math.Cos(RADS.y); //0
 
-
-
-
-
             float XAccel = (cosX * -deltaX + (sinY * deltaY) * sinX) + (sinX * -deltaZ) * cosY;
             float YAccel = (cosY * deltaY) + (sinY * deltaZ);
             float ZAccel = (sinX * deltaX + (sinY * deltaY) * cosX) + (cosX * -deltaZ) * cosY;
@@ -458,8 +454,8 @@ namespace renderX2
         //front
          0.5f, -0.5f,  0.5f,    1.0f,  1.0f,
         -0.5f, -0.5f,  0.5f,    0.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,   1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,    1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,    1.0f,  0.0f,
         -0.5f, -0.5f,  0.5f,    0.0f,  1.0f,
         -0.5f,  0.5f,  0.5f,    0.0f,  0.0f,
 
@@ -488,10 +484,10 @@ namespace renderX2
         -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,
 
         //top
-         -0.5f,  0.5f, -0.5f,    0.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,    1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,    1.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  1.0f,
+         -0.5f,  0.5f, -0.5f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,   1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,   1.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,   1.0f,  1.0f,
         -0.5f,  0.5f,  0.5f,   0.0f,  1.0f,
         -0.5f,  0.5f, -0.5f,   0.0f,  0.0f
                 };
