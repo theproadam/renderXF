@@ -7,5 +7,3 @@ c:\users\adam\documents\visual studio 2013\Projects\renderXF\renderXF\obj\Debug\
 C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\bin\Debug\renderXF.exe.config
 C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\bin\Debug\renderXF.exe
 C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.exe
-C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.csprojAssemblyReference.cache
-C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Debug\renderXF.csproj.CoreCompileInputs.cache

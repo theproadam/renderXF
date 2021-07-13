@@ -190,13 +190,13 @@ namespace renderXF
 
             //GL._DebugBlit
             StandardShader = new Shader(null, BasicShader, GLRenderMode.TriangleFlat);
-            StandardShader.SetOverrideAttributeCopy(true);
+            //StandardShader.SetOverrideAttributeCopy(true);
            // Skybox = new GLCubemap("skybox_data");
 
 
             DisplayTexture = new Shader(CubeShader, TextureShader, GLRenderMode.Triangle);
-            DisplayTexture.SetOverrideAttributeCopy(false);
-            DisplayTexture.SetOverrideAttributeCount(3);
+          //  DisplayTexture.SetOverrideAttributeCopy(false);
+          //  DisplayTexture.SetOverrideAttributeCount(3);
            // GL.BlitInto
             
             texture2d = new GLTexture("container2.png", MemoryLocation.Heap, DuringLoad.Flip);

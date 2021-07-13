@@ -471,7 +471,28 @@ namespace renderX2
             else return false;
         }
 
-        unsafe bool ScanLinePLUS(int Line, float* TRIS_DATA, int TRIS_SIZE, float* Intersects)
+        const float SCANLINE_EPSILON = 1E-3f;
+        bool BiggerOrEqual(float Value, float Line)
+        {
+            if (Value > Line) return true;
+            else if (Math.Abs(Value - Line) <= SCANLINE_EPSILON) return true;
+            else return false;
+        }
+
+        bool SmallerOrEqual(float Value, float Line)
+        {
+            if (Value < Line) return true;
+            else if (Math.Abs(Value - Line) <= SCANLINE_EPSILON) return true;
+            else return false;
+        }
+
+        bool isApprox(float Value, float Line)
+        {
+            if (Math.Abs(Value - Line) <= SCANLINE_EPSILON) return true;
+            else return false;
+        }
+
+        unsafe bool ScanLinePLUS_OLD(int Line, float* TRIS_DATA, int TRIS_SIZE, float* Intersects)
         {
             int IC = 0;
             for (int i = 0; i < TRIS_SIZE; i++)
@@ -503,6 +524,54 @@ namespace renderX2
                         if (IC >= 2) break;
                     }
                     else if (i > 0 && TRIS_DATA[(i - 1) * Stride + 1] <= Line)
+                    {
+                        LIPA_PLUS(Intersects, IC, TRIS_DATA, i - 1, i, Line);
+                        IC++;
+
+                        if (IC >= 2) break;
+                    }
+
+                }
+            }
+
+
+            if (IC == 2)
+                return true;
+            else return false;
+        }
+      
+        unsafe bool ScanLinePLUS(int Line, float* TRIS_DATA, int TRIS_SIZE, float* Intersects)
+        {
+            int IC = 0;
+            for (int i = 0; i < TRIS_SIZE; i++)
+            {
+                if (TRIS_DATA[i * Stride + 1] <= Line)
+                {
+                    if (i == 0 && BiggerOrEqual(TRIS_DATA[(TRIS_SIZE - 1) * Stride + 1], Line))
+                    {
+                        LIPA_PLUS(Intersects, IC, TRIS_DATA, TRIS_SIZE - 1, i, Line);
+                        IC++;
+
+                        if (IC >= 2) break;
+                    }
+                    else if (i > 0 && BiggerOrEqual(TRIS_DATA[(i - 1) * Stride + 1], Line))
+                    {
+                        LIPA_PLUS(Intersects, IC, TRIS_DATA, i - 1, i, Line);
+                        IC++;
+
+                        if (IC >= 2) break;
+                    }
+                }
+                else if (TRIS_DATA[i * Stride + 1] > Line)
+                {
+                    if (i == 0 && SmallerOrEqual(TRIS_DATA[(TRIS_SIZE - 1) * Stride + 1],  Line))
+                    {
+                        LIPA_PLUS(Intersects, IC, TRIS_DATA, TRIS_SIZE - 1, i, Line);
+                        IC++;
+
+                        if (IC >= 2) break;
+                    }
+                    else if (i > 0 && SmallerOrEqual(TRIS_DATA[(i - 1) * Stride + 1], Line))
                     {
                         LIPA_PLUS(Intersects, IC, TRIS_DATA, i - 1, i, Line);
                         IC++;
@@ -637,7 +706,7 @@ namespace renderX2
             XR[2 + I] = Z;
         }
 
-        unsafe void LIPA_PLUS(float* XR, int I, float* V_DATA, int A, int B, int LinePos)
+        unsafe void LIPA_PLUS_OLD(float* XR, int I, float* V_DATA, int A, int B, int LinePos)
         {
             float X;
             float Z;
@@ -682,6 +751,89 @@ namespace renderX2
             }
             else
             {
+                float VALUE1 = V_DATA[A + 1];
+                float VALUE2 = V_DATA[B + 1];
+
+                throw new Exception("this shoudnt happen");
+            }
+
+            float ZDIFF = (1f / V_DATA[A + 2] - 1f / V_DATA[B + 2]);
+            bool usingZ = ZDIFF != 0;
+
+            if (ZDIFF != 0)
+                usingZ = ZDIFF * ZDIFF >= 0.00001f;
+
+            if (usingZ & matrixlerpv != 1)
+                for (int a = 3; a < Stride; a++)
+                {
+                    float slopeA = (V_DATA[A + a] - V_DATA[B + a]) / ZDIFF;
+                    float bA = -slopeA / V_DATA[A + 2] + V_DATA[A + a];
+                    XR[I * (Stride - 1) + (a - 1)] = slopeA / Z + bA;
+                }
+            else if (V_DATA[A + 1] - V_DATA[B + 1] != 0)
+                for (int a = 3; a < Stride; a++)
+                {
+                    float slopeA = (V_DATA[A + a] - V_DATA[B + a]) / (V_DATA[A + 1] - V_DATA[B + 1]);
+                    float bA = -slopeA * V_DATA[A + 1] + V_DATA[A + a];
+                    XR[I * (Stride - 1) + (a - 1)] = (slopeA * (float)LinePos + bA);
+
+
+                }
+            else throw new Exception("this shoudnt happen");
+
+            XR[I * (Stride - 1) + 0] = X;
+            XR[I * (Stride - 1) + 1] = Z;
+        }
+
+
+        unsafe void LIPA_PLUS(float* XR, int I, float* V_DATA, int A, int B, int LinePos)
+        {
+            float X;
+            float Z;
+
+            A *= Stride;
+            B *= Stride;
+
+            if (isApprox(V_DATA[A + 1], LinePos))
+            {
+                XR[I * (Stride - 1)] = V_DATA[A];
+                XR[I * (Stride - 1) + 1] = V_DATA[A + 2];
+
+                for (int a = 3; a < Stride; a++)
+                {
+                    XR[I * (Stride - 1) + (a - 1)] = V_DATA[A + a];
+                }
+                return;
+            }
+
+            if (isApprox(V_DATA[B + 1], LinePos))
+            {
+                XR[I * (Stride - 1)] = V_DATA[B];
+                XR[I * (Stride - 1) + 1] = V_DATA[B + 2];
+
+                for (int a = 3; a < Stride; a++)
+                {
+                    XR[I * (Stride - 1) + (a - 1)] = V_DATA[B + a];
+                }
+                return;
+            }
+
+            if (V_DATA[A + 1] - V_DATA[B + 1] != 0)
+            {
+                float slope = (V_DATA[A] - V_DATA[B]) / (V_DATA[A + 1] - V_DATA[B + 1]);
+                float b = -slope * V_DATA[A + 1] + V_DATA[A];
+                X = slope * LinePos + b;
+
+                float slopeZ = (V_DATA[A + 2] - V_DATA[B + 2]) / (V_DATA[A + 1] - V_DATA[B + 1]);
+                float bZ = -slopeZ * V_DATA[A + 1] + V_DATA[A + 2];
+                Z = slopeZ * LinePos + bZ;
+
+            }
+            else
+            {
+                float VALUE1 = V_DATA[A + 1];
+                float VALUE2 = V_DATA[B + 1];
+
                 throw new Exception("this shoudnt happen");
             }
 
