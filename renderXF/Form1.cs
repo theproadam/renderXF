@@ -154,6 +154,8 @@ namespace renderXF
             }
             #endregion
 
+            
+
             #region VertexBufferInitialization
             STLImporter Importer = new STLImporter(StartupForm.FilePath);
 
@@ -186,7 +188,7 @@ namespace renderXF
             VertexBuffer = new GLBuffer(renderX.PrimitiveTypes.Cube(), 5, MemoryLocation.Heap);
             
 
-
+            //GL._DebugBlit
             StandardShader = new Shader(null, BasicShader, GLRenderMode.TriangleFlat);
             StandardShader.SetOverrideAttributeCopy(true);
            // Skybox = new GLCubemap("skybox_data");

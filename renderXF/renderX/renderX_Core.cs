@@ -481,6 +481,34 @@ namespace renderX2
             }
         }
 
+        public void _DebugBlit(IntPtr destHandle)
+        {
+            if (miniGLMode)
+                throw new Exception("MiniGL Mode Does Not Support Blit!");
+
+            lock (ThreadLock)
+            {
+                BITMAPINFO BINFO = new BITMAPINFO();
+                BINFO.bmiHeader.biBitCount = 32; //BITS PER PIXEL
+                BINFO.bmiHeader.biWidth = ops.renderWidth;
+                BINFO.bmiHeader.biHeight = ops.renderHeight;
+                BINFO.bmiHeader.biPlanes = 1;
+                unsafe
+                {
+                    BINFO.bmiHeader.biSize = (uint)sizeof(BITMAPINFOHEADER);
+                }
+
+                IntPtr TargetDC = GetDC(destHandle);
+               
+
+                SetDIBitsToDevice(TargetDC, 0, 0, (uint)ops.renderWidth, (uint)ops.renderHeight, 0, 0, 0, (uint)ops.renderHeight, DrawingBuffer, ref BINFO, 0);
+
+                ReleaseDC(destHandle, TargetDC);
+            }
+        }
+
+
+
         public unsafe void Clear(byte R, byte G, byte B)
         {
             lock (ThreadLock)
@@ -961,11 +989,6 @@ namespace renderX2
         Z_Depth = 1
     }
 
-    public enum GLRenderPath
-    { 
-        Forward,
-        Deferred
-    }
 
     public enum MemoryLocation
     { 

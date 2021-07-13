@@ -3573,6 +3573,9 @@ namespace renderX2
                         TO = Intersects + (Stride - 1);
                     }
 
+                    FromX = (int)((int)FROM[0] == 0 ? 0 : FROM[0] + 1);
+                    ToX = (int)TO[0];
+
 
                     slopeZ = (FROM[1] - TO[1]) / (FROM[0] - TO[0]);
                     bZ = -slopeZ * FROM[0] + FROM[1];
@@ -3615,7 +3618,7 @@ namespace renderX2
                     //FOR SOME REASON USING REGULAR LINEAR INTERPOLATION WORKS PERFECTELY OK.
                     //THE Z VALUES FROM X1 to X2 INTERSECTS SEEMS TO BE EXACTLY THE SAME
                     if (attribdata)
-                        for (int o = FromX + 1; o <= ToX; o++)
+                        for (int o = FromX; o <= ToX; o++)
                         {
                             float zz;// = (1f / (slopeZ * (float)o + bZ) - oValue);
                             // float zz = 1f / (slopeZ * (float)o + bZ);
@@ -3661,7 +3664,7 @@ namespace renderX2
                             FS((bptr + (i * wsD + (o * sD) + 0)), az, index);
                         }
                     else
-                        for (int o = FromX + 1; o <= ToX; o++)
+                        for (int o = FromX; o <= ToX; o++)
                         {
                             float s;
                             //   float s = farZ - (1f / ((slopeZ * (float)o + bZ)));
