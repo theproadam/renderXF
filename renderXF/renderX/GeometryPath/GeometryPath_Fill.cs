@@ -3486,6 +3486,9 @@ namespace renderX2
             #endregion
 
 
+            float yMaxValue = 0;
+            float yMinValue = renderHeight;
+
             int yMax = 0;
             int yMin = renderHeight;
 
@@ -3497,8 +3500,8 @@ namespace renderX2
                     VERTEX_DATA[im * Stride + 1] = rh + (VERTEX_DATA[im * Stride + 1] / VERTEX_DATA[im * Stride + 2]) * fh;
                     VERTEX_DATA[im * Stride + 2] = 1f / (VERTEX_DATA[im * Stride + 2]);
 
-                    if (VERTEX_DATA[im * Stride + 1] > yMax) yMax = (int)VERTEX_DATA[im * Stride + 1];
-                    if (VERTEX_DATA[im * Stride + 1] < yMin) yMin = (int)VERTEX_DATA[im * Stride + 1];
+                    if (VERTEX_DATA[im * Stride + 1] > yMaxValue) yMaxValue = VERTEX_DATA[im * Stride + 1];
+                    if (VERTEX_DATA[im * Stride + 1] < yMinValue) yMinValue = VERTEX_DATA[im * Stride + 1];
                 }
             else if (matrixlerpv == 1)
                 for (int im = 0; im < BUFFER_SIZE; im++)
@@ -3506,8 +3509,8 @@ namespace renderX2
                     VERTEX_DATA[im * Stride + 0] = rw + VERTEX_DATA[im * Stride + 0] / ox;
                     VERTEX_DATA[im * Stride + 1] = rh + VERTEX_DATA[im * Stride + 1] / oy;
 
-                    if (VERTEX_DATA[im * Stride + 1] > yMax) yMax = (int)VERTEX_DATA[im * Stride + 1];
-                    if (VERTEX_DATA[im * Stride + 1] < yMin) yMin = (int)VERTEX_DATA[im * Stride + 1];
+                    if (VERTEX_DATA[im * Stride + 1] > yMaxValue) yMaxValue = VERTEX_DATA[im * Stride + 1];
+                    if (VERTEX_DATA[im * Stride + 1] < yMinValue) yMinValue = VERTEX_DATA[im * Stride + 1];
                 }
             else
                 for (int im = 0; im < BUFFER_SIZE; im++)
@@ -3517,8 +3520,8 @@ namespace renderX2
                     VERTEX_DATA[im * Stride + 2] = 1f / (VERTEX_DATA[im * Stride + 2] + oValue);
 
 
-                    if (VERTEX_DATA[im * Stride + 1] > yMax) yMax = (int)VERTEX_DATA[im * Stride + 1];
-                    if (VERTEX_DATA[im * Stride + 1] < yMin) yMin = (int)VERTEX_DATA[im * Stride + 1];
+                    if (VERTEX_DATA[im * Stride + 1] > yMaxValue) yMaxValue = VERTEX_DATA[im * Stride + 1];
+                    if (VERTEX_DATA[im * Stride + 1] < yMinValue) yMinValue = VERTEX_DATA[im * Stride + 1];
                 }
             #endregion
 
@@ -3526,14 +3529,20 @@ namespace renderX2
             if (FACE_CULL)
             {
                 float A = BACKFACECULLS(VERTEX_DATA);
-                if (CULL_FRONT && A > 0) return;
-                else if (!CULL_FRONT && A < 0) return;
+                if (CULL_FRONT && A >= 0) return;
+                else if (!CULL_FRONT && A <= 0) return;
             }
             #endregion
 
             int RW = renderWidth;
 
             if (LOG_T_COUNT) Interlocked.Increment(ref T_COUNT);
+
+
+            yMin = (int)yMinValue;
+            yMax = yMaxValue >= (renderHeight - 1.8f) ? renderHeight - 1 : (int)yMaxValue;
+
+
 
             if (yMin < 0) yMin = 0;
             if (yMax >= renderHeight) yMax = renderHeight - 1;
@@ -3580,15 +3589,11 @@ namespace renderX2
                     slopeZ = (FROM[1] - TO[1]) / (FROM[0] - TO[0]);
                     bZ = -slopeZ * FROM[0] + FROM[1];
 
-                    FromX = (int)FROM[0];
-                    ToX = (int)TO[0];
+                   // FromX = (int)FROM[0];
+                   // ToX = (int)TO[0];
 
                     if (ToX >= renderWidth) TO[0] = renderWidth - 1;
                     if (FromX < 0) FROM[0] = 0;
-
-               //     *(iptr + i * RW + FromX) = FastInt(FROM[2] * 127.5f + 127.5f, FROM[3] * 127.5f + 127.5f, FROM[4] * 127.5f + 127.5f);
-                ///    *(iptr + i * RW + ToX) = FastInt(TO[2] * 127.5f + 127.5f, TO[3] * 127.5f + 127.5f, TO[4] * 127.5f + 127.5f);
-                //    return;
 
                     float ZDIFF = 1f / FROM[1] - 1f / TO[1];
                     bool usingZ = ZDIFF != 0;

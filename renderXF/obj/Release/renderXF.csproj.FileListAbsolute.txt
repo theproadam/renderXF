@@ -5,6 +5,6 @@ C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Releas
 C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\bin\Release\renderXF.pdb
 C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Release\renderXF.pdb
 C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Release\renderXF.csprojResolveAssemblyReference.cache
-C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\bin\Release\renderXF.exe.config
-C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\bin\Release\renderXF.exe
-C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Release\renderXF.exe
+C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\bin\Release\renderXF.dll.config
+C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\bin\Release\renderXF.dll
+C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Release\renderXF.dll
