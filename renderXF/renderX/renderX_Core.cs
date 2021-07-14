@@ -293,8 +293,8 @@ namespace renderX2
                         throw new Exception("Wireframe does not yet support extra attribute data. Sorry!");
                     //FIX THIS ^^^^
 
-                    if (SelectedShader.ShaderVertex != null) //Vertex shader not supported
-                        throw new Exception("no shader vertex");
+                //    if (SelectedShader.ShaderVertex != null) //Vertex shader not supported
+                //        throw new Exception("no shader vertex");
 
                     //INPUT OVERRIDE SETTINGS
                     if (SelectedShader.vShdrAttr >= 0 && SelectedShader.vShdrAttr < 30)

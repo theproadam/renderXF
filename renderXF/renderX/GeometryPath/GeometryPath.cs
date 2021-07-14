@@ -471,7 +471,7 @@ namespace renderX2
             else return false;
         }
 
-        const float SCANLINE_EPSILON = 1E-3f;
+        const float SCANLINE_EPSILON = 1E-2f;
         bool BiggerOrEqual(float Value, float Line)
         {
             if (Value > Line) return true;

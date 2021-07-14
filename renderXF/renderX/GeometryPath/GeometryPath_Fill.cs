@@ -1033,24 +1033,70 @@ namespace renderX2
             float* VERTEX_DATA = stackalloc float[Stride * 3];
             int BUFFER_SIZE = 3;
 
-            for (int b = 0; b < 3; b++)
+            #region Vertex Input and Processing
+            if (!CAMERA_BYPASS)
             {
-                float X = *(p + (index * FaceStride + b * ReadStride)) - cX;
-                float Y = *(p + (index * FaceStride + b * ReadStride + 1)) - cY;
-                float Z = *(p + (index * FaceStride + b * ReadStride + 2)) - cZ;
+                if (HAS_VERTEX_SHADER)
+                {
+                    if (COPY_ATTRIB_MANUAL)
+                        for (int b = 0; b < 3; b++)
+                            VS((VERTEX_DATA + b * Stride + 0), (p + (index * FaceStride + b * ReadStride)), index);
+                    else for (int b = 0; b < 3; b++)
+                        {
+                            VS((VERTEX_DATA + b * Stride + 0), (p + (index * FaceStride + b * ReadStride)), index);
+                            for (int a = 3; a < Stride; a++)
+                                VERTEX_DATA[b * Stride + a] = *(p + (index * FaceStride) + b * ReadStride + a);
+                        }
 
-                float fiX = X * coZ - Z * sZ;
-                float fiZ = Z * coZ + X * sZ;
-                float ndY = Y * coY + fiZ * sY;
+                    for (int b = 0; b < 3; b++)
+                    {
+                        float X = *(VERTEX_DATA + b * Stride + 0) - cX;
+                        float Y = *(VERTEX_DATA + b * Stride + 1) - cY;
+                        float Z = *(VERTEX_DATA + b * Stride + 2) - cZ;
 
-                //Returns the newly rotated Vector
-                *(VERTEX_DATA + b * Stride + 0) = fiX * coX - ndY * sX;
-                *(VERTEX_DATA + b * Stride + 1) = ndY * coX + fiX * sX;
-                *(VERTEX_DATA + b * Stride + 2) = fiZ * coY - Y * sY;
+                        float fiX = (X) * coZ - (Z) * sZ;
+                        float fiZ = (Z) * coZ + (X) * sZ;
+                        float ndY = (Y) * coY + (fiZ) * sY;
 
-                for (int a = 3; a < Stride; a++)
-                    VERTEX_DATA[b * Stride + a] = *(p + (index * FaceStride) + b * ReadStride + a);
+                        //Returns the newly rotated Vector
+                        *(VERTEX_DATA + b * Stride + 0) = (fiX) * coX - (ndY) * sX;
+                        *(VERTEX_DATA + b * Stride + 1) = (ndY) * coX + (fiX) * sX;
+                        *(VERTEX_DATA + b * Stride + 2) = (fiZ) * coY - (Y) * sY;
+                    }
+                }
+                else
+                    for (int b = 0; b < 3; b++)
+                    {
+                        float X = *(p + (index * FaceStride + b * ReadStride)) - cX;
+                        float Y = *(p + (index * FaceStride + b * ReadStride + 1)) - cY;
+                        float Z = *(p + (index * FaceStride + b * ReadStride + 2)) - cZ;
+
+                        float fiX = (X) * coZ - (Z) * sZ;
+                        float fiZ = (Z) * coZ + (X) * sZ;
+                        float ndY = (Y) * coY + (fiZ) * sY;
+
+                        //Returns the newly rotated Vector
+                        *(VERTEX_DATA + b * Stride + 0) = (fiX) * coX - (ndY) * sX;
+                        *(VERTEX_DATA + b * Stride + 1) = (ndY) * coX + (fiX) * sX;
+                        *(VERTEX_DATA + b * Stride + 2) = (fiZ) * coY - (Y) * sY;
+
+                        for (int a = 3; a < Stride; a++)
+                            VERTEX_DATA[b * Stride + a] = *(p + (index * FaceStride) + b * ReadStride + a);
+                    }
             }
+            else
+            {
+                if (COPY_ATTRIB_MANUAL)
+                    for (int b = 0; b < 3; b++)
+                        VS((VERTEX_DATA + b * Stride + 0), (p + (index * FaceStride + b * ReadStride)), index);
+                else for (int b = 0; b < 3; b++)
+                    {
+                        VS((VERTEX_DATA + b * Stride + 0), (p + (index * FaceStride + b * ReadStride)), index);
+                        for (int a = 3; a < Stride; a++)
+                            VERTEX_DATA[b * Stride + a] = *(p + (index * FaceStride) + b * ReadStride + a);
+                    }
+            }
+            #endregion
             //TODO: Replace RTL_ZERO_MEMORY with a simple loop, it should be much faster
             //WARNING: Max faces is actually 12, with 4 intersectspoints coming from one vertex MAX
             //UPDATE: max 5 intersect points rippp
@@ -1596,8 +1642,8 @@ namespace renderX2
             else if (matrixlerpv == 1)
                 for (int im = 0; im < BUFFER_SIZE; im++)
                 {
-                    VERTEX_DATA[im * Stride + 0] = rw + (VERTEX_DATA[im * Stride + 0] / ox);
-                    VERTEX_DATA[im * Stride + 1] = rh + (VERTEX_DATA[im * Stride + 1] / oy);
+                    VERTEX_DATA[im * Stride + 0] = roundf(rw + (VERTEX_DATA[im * Stride + 0] / ox));
+                    VERTEX_DATA[im * Stride + 1] = roundf(rh + (VERTEX_DATA[im * Stride + 1] / oy));
                 }
             else
                 for (int im = 0; im < BUFFER_SIZE; im++)
@@ -3492,6 +3538,10 @@ namespace renderX2
             int yMax = 0;
             int yMin = renderHeight;
 
+            float iox = 1f / ox;
+            float ioy = 1f / oy;
+
+
             #region CameraSpaceToScreenSpace
             if (matrixlerpv == 0)
                 for (int im = 0; im < BUFFER_SIZE; im++)
@@ -3506,9 +3556,9 @@ namespace renderX2
             else if (matrixlerpv == 1)
                 for (int im = 0; im < BUFFER_SIZE; im++)
                 {
-                    VERTEX_DATA[im * Stride + 0] = rw + VERTEX_DATA[im * Stride + 0] / ox;
-                    VERTEX_DATA[im * Stride + 1] = rh + VERTEX_DATA[im * Stride + 1] / oy;
-
+                    VERTEX_DATA[im * Stride + 0] = (rw + VERTEX_DATA[im * Stride + 0] * iox);
+                    VERTEX_DATA[im * Stride + 1] = (rh + VERTEX_DATA[im * Stride + 1] * ioy);
+                    
                     if (VERTEX_DATA[im * Stride + 1] > yMaxValue) yMaxValue = VERTEX_DATA[im * Stride + 1];
                     if (VERTEX_DATA[im * Stride + 1] < yMinValue) yMinValue = VERTEX_DATA[im * Stride + 1];
                 }
@@ -3540,20 +3590,23 @@ namespace renderX2
 
 
             yMin = (int)yMinValue;
-          //  yMax = yMaxValue >= (renderHeight - 1.5f) ? renderHeight - 1 : (int)yMaxValue;
-            yMax = (int)yMaxValue;
+            yMax = yMaxValue >= (renderHeight - 1.5f) ? renderHeight - 1 : (int)yMaxValue;
+         //   yMax = (int)roundf(yMaxValue);
 
 
             if (yMin < 0) yMin = 0;
             if (yMax >= renderHeight) yMax = renderHeight - 1;
 
-            Parallel.For(yMin, yMax + 1, i =>
+            float* Intersects = stackalloc float[4 + (Stride - 3) * 5 + ATTRIBLVL];
+            float* az = Intersects + 4 + (Stride - 3) * 2;
+            float* slopeAstack = az + (Stride - 3) + ATTRIBLVL;
+            float* bAstack = slopeAstack + (Stride - 3);
+            float* RTNA = az + ATTRIBLVL;
+
+            for (int i = yMin; i < yMax + 1; i++)
+            // Parallel.For(yMin, yMax + 1, i =>
             {
-                float* Intersects = stackalloc float[4 + (Stride - 3) * 5 + ATTRIBLVL];
-                float* az = Intersects + 4 + (Stride - 3) * 2;
-                float* slopeAstack = az + (Stride - 3) + ATTRIBLVL;
-                float* bAstack = slopeAstack + (Stride - 3);
-                float* RTNA = az + ATTRIBLVL;
+               
 
                 float* FROM;
                 float* TO;
@@ -3566,8 +3619,6 @@ namespace renderX2
 
                 float sA;
                 float sB;
-                //  for (int i = yMin; i <= yMax; i++){
-
 
                 if (ScanLinePLUS(i, VERTEX_DATA, BUFFER_SIZE, Intersects))
                 {
@@ -3582,15 +3633,15 @@ namespace renderX2
                         TO = Intersects + (Stride - 1);
                     }
 
-                    FromX = (int)((int)FROM[0] == 0 ? 0 : FROM[0] + 1);
-                    ToX = (int)TO[0];
+                    //    FromX = (int)((int)FROM[0] == 0 ? 0 : FROM[0] + 1);
+                    //    ToX = (int)TO[0];
 
 
                     slopeZ = (FROM[1] - TO[1]) / (FROM[0] - TO[0]);
                     bZ = -slopeZ * FROM[0] + FROM[1];
 
-                   // FromX = (int)FROM[0];
-                   // ToX = (int)TO[0];
+                    FromX = (int)FROM[0];
+                    ToX = (int)TO[0];
 
                     if (ToX >= renderWidth) TO[0] = renderWidth - 1;
                     if (FromX < 0) FROM[0] = 0;
@@ -3663,7 +3714,7 @@ namespace renderX2
 
                             if (usingZ & matrixlerpv != 1) for (int z = 0; z < Stride - 3; z++) az[z] = (slopeAstack[z] / (slopeZ * (float)o + bZ) + bAstack[z]);
                             else for (int z = 0; z < Stride - 3; z++) az[z] = (slopeAstack[z] * (float)o + bAstack[z]);
-                        
+
 
                             //   SF((bptr + (i * wsD + (o * sD) + 0)), index);
                             FS((bptr + (i * wsD + (o * sD) + 0)), az, index);
@@ -3683,14 +3734,23 @@ namespace renderX2
 
                             if (usingZ & matrixlerpv != 1) for (int z = 0; z < Stride - 3; z++) az[z] = (slopeAstack[z] / (slopeZ * (float)o + bZ) + bAstack[z]);
                             else for (int z = 0; z < Stride - 3; z++) az[z] = (slopeAstack[z] * (float)o + bAstack[z]);
-                        
+
                             //   SF((bptr + (i * wsD + (o * sD) + 0)), index);
                             FS((bptr + (i * wsD + (o * sD) + 0)), az, index);
                         }
                 }
-            });
+            }//);
 
             if (LinkedWFrame) LateWireFrame(VERTEX_DATA, BUFFER_SIZE);
+        }
+
+        float roundf(float value)
+        {
+            int trunc = (int)value;
+
+            if (value - (float)trunc >= 0.5f) 
+                return trunc + 1;
+            else return trunc;
         }
 
         public void FillGouraud(int index)
