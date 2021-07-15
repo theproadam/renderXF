@@ -8,3 +8,13 @@ C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Releas
 C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\bin\Release\renderXF.exe.config
 C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\bin\Release\renderXF.exe
 C:\Users\Adam\Documents\Visual Studio 2013\Projects\renderXF\renderXF\obj\Release\renderXF.exe
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\bin\Release\renderXF.exe.config
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\obj\Release\renderXF.exe
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\obj\Release\renderXF.pdb
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\bin\Release\renderXF.exe
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\bin\Release\renderXF.pdb
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\obj\Release\renderXF.csprojResolveAssemblyReference.cache
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\obj\Release\renderXF.Form1.resources
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\obj\Release\renderXF.Properties.Resources.resources
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\obj\Release\renderXF.StartupForm.resources
+C:\Users\Adam\Documents\GitHub\renderXF\renderXF\obj\Release\renderXF.csproj.GenerateResource.Cache

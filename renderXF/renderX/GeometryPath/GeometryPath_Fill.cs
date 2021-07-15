@@ -3590,7 +3590,8 @@ namespace renderX2
 
 
             yMin = (int)yMinValue;
-            yMax = yMaxValue >= (renderHeight - 1.5f) ? renderHeight - 1 : (int)yMaxValue;
+           // yMax = yMaxValue >= (renderHeight - 1.5f) ? renderHeight - 1 : (int)yMaxValue;
+            yMax = (int)yMaxValue;
          //   yMax = (int)roundf(yMaxValue);
 
 
