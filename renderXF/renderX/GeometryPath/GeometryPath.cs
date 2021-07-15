@@ -471,7 +471,11 @@ namespace renderX2
             else return false;
         }
 
+<<<<<<< Updated upstream
         const float SCANLINE_EPSILON = 1E-2f;
+=======
+        const float SCANLINE_EPSILON = 1E-5f;
+>>>>>>> Stashed changes
         bool BiggerOrEqual(float Value, float Line)
         {
             if (Value > Line) return true;
