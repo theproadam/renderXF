@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -11,7 +11,7 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using renderX2;
 
-namespace renderXF
+namespace demo
 {
     public unsafe partial class Form1 : Form
     {
