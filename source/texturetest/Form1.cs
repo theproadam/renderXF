@@ -54,7 +54,7 @@ namespace TextureTest
             GL.SetFaceCulling(true, false);
 
 
-            texture2d = new GLTexture("myTexture.png", MemoryLocation.Heap, DuringLoad.Flip);
+            texture2d = new GLTexture("container2.png", MemoryLocation.Heap, DuringLoad.Flip);
             TEXTURE_ADDR = (int*)texture2d.GetAddress();
 
             textureHeight = texture2d.Height;
