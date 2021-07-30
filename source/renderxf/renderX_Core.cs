@@ -509,11 +509,11 @@ namespace renderX2
 
 
 
-        public unsafe void Clear(byte R, byte G, byte B)
+        public unsafe void Clear(byte R, byte G, byte B, byte A = 0xff)
         {
             lock (ThreadLock)
             {
-                _iClear = (((((byte)R) << 8) | (byte)G) << 8) | (byte)B;
+                _iClear = (((((A << 8) | R) << 8) | G) << 8) | B;
                 _iptr = (int*)DrawingBuffer;
 
                 Parallel.For(0, RenderHeight, _2D_Clear);
