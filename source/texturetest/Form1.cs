@@ -248,6 +248,14 @@ namespace TextureTest
             int U = (int)(Clamp01(Attributes[0]) * textureWidthMinusOne);
             int V = (int)(Clamp01(Attributes[1]) * textureHeightMinusOne);
 
+            if (float.IsNaN(Attributes[0]) || float.IsNaN(Attributes[1]))
+            {
+                BGR[0] = 255;
+                BGR[1] = 0;
+                BGR[2] = 0;
+                return; // Set a breakpoint here to catch issue #10 in the act.
+            }
+
             *((int*)BGR) = TEXTURE_ADDR[U + V * textureHeight];
         }
 
