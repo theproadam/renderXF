@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -3556,9 +3556,9 @@ namespace renderX2
             else if (matrixlerpv == 1)
                 for (int im = 0; im < BUFFER_SIZE; im++)
                 {
-                    VERTEX_DATA[im * Stride + 0] = (rw + VERTEX_DATA[im * Stride + 0] * iox);
-                    VERTEX_DATA[im * Stride + 1] = (rh + VERTEX_DATA[im * Stride + 1] * ioy);
-                    
+                    VERTEX_DATA[im * Stride + 0] = roundf(rw + VERTEX_DATA[im * Stride + 0] * iox);
+                    VERTEX_DATA[im * Stride + 1] = roundf(rh + VERTEX_DATA[im * Stride + 1] * ioy);
+
                     if (VERTEX_DATA[im * Stride + 1] > yMaxValue) yMaxValue = VERTEX_DATA[im * Stride + 1];
                     if (VERTEX_DATA[im * Stride + 1] < yMinValue) yMinValue = VERTEX_DATA[im * Stride + 1];
                 }
@@ -3634,18 +3634,17 @@ namespace renderX2
                         TO = Intersects + (Stride - 1);
                     }
 
-                    //    FromX = (int)((int)FROM[0] == 0 ? 0 : FROM[0] + 1);
-                    //    ToX = (int)TO[0];
+                    FROM[0] = roundf(FROM[0]);
+                    TO[0] = roundf(TO[0]);
 
+                    FromX = (int)FROM[0] == 0 ? 0 : (int)FROM[0] + 1;
+                    ToX = (int)TO[0];
 
                     slopeZ = (FROM[1] - TO[1]) / (FROM[0] - TO[0]);
                     bZ = -slopeZ * FROM[0] + FROM[1];
 
-                    FromX = (int)FROM[0];
-                    ToX = (int)TO[0];
-
-                    if (ToX >= renderWidth) TO[0] = renderWidth - 1;
-                    if (FromX < 0) FROM[0] = 0;
+                    if (ToX >= renderWidth) ToX = renderWidth - 1;
+                    if (FromX < 0) FromX = 0;
 
                     float ZDIFF = 1f / FROM[1] - 1f / TO[1];
                     bool usingZ = ZDIFF != 0;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -471,7 +471,7 @@ namespace renderX2
             else return false;
         }
 
-        const float SCANLINE_EPSILON = 1E-2f;
+        const float SCANLINE_EPSILON = 1E-3f;
         bool BiggerOrEqual(float Value, float Line)
         {
             if (Value > Line) return true;
@@ -543,42 +543,57 @@ namespace renderX2
         unsafe bool ScanLinePLUS(int Line, float* TRIS_DATA, int TRIS_SIZE, float* Intersects)
         {
             int IC = 0;
-            for (int i = 0; i < TRIS_SIZE; i++)
+            for (int i = 0; i < TRIS_SIZE - 1; i++)
             {
-                if (TRIS_DATA[i * Stride + 1] <= Line)
+                float y1 = TRIS_DATA[i * Stride + 1];
+                float y2 = TRIS_DATA[(i + 1) * Stride + 1];
+
+                if (y2 == y1 && Line == y2)
                 {
-                    if (i == 0 && BiggerOrEqual(TRIS_DATA[(TRIS_SIZE - 1) * Stride + 1], Line))
-                    {
-                        LIPA_PLUS(Intersects, IC, TRIS_DATA, TRIS_SIZE - 1, i, Line);
-                        IC++;
-
-                        if (IC >= 2) break;
-                    }
-                    else if (i > 0 && BiggerOrEqual(TRIS_DATA[(i - 1) * Stride + 1], Line))
-                    {
-                        LIPA_PLUS(Intersects, IC, TRIS_DATA, i - 1, i, Line);
-                        IC++;
-
-                        if (IC >= 2) break;
-                    }
+                    LIPA_PLUS(Intersects, 0, TRIS_DATA, i, i + 1, Line);
+                    LIPA_PLUS(Intersects, 1, TRIS_DATA, i + 1, i, Line);
+                    return true;
                 }
-                else if (TRIS_DATA[i * Stride + 1] > Line)
+
+                if (y2 < y1)
                 {
-                    if (i == 0 && SmallerOrEqual(TRIS_DATA[(TRIS_SIZE - 1) * Stride + 1],  Line))
-                    {
-                        LIPA_PLUS(Intersects, IC, TRIS_DATA, TRIS_SIZE - 1, i, Line);
-                        IC++;
+                    float t = y2;
+                    y2 = y1;
+                    y1 = t;
+                }
 
-                        if (IC >= 2) break;
-                    }
-                    else if (i > 0 && SmallerOrEqual(TRIS_DATA[(i - 1) * Stride + 1], Line))
-                    {
-                        LIPA_PLUS(Intersects, IC, TRIS_DATA, i - 1, i, Line);
-                        IC++;
+                if (Line <= y2 && Line > y1)
+                {
+                    LIPA_PLUS(Intersects, IC, TRIS_DATA, i, i + 1, Line);
+                    IC++;
+                }
 
-                        if (IC >= 2) break;
-                    }
+                if (IC >= 2) return true;
+            }
 
+            if (IC < 2)
+            {
+                float y1 = TRIS_DATA[0 * Stride + 1];
+                float y2 = TRIS_DATA[(TRIS_SIZE - 1) * Stride + 1];
+
+                if (y2 == y1 && Line == y2)
+                {
+                    LIPA_PLUS(Intersects, 0, TRIS_DATA, 0, (TRIS_SIZE - 1), Line);
+                    LIPA_PLUS(Intersects, 1, TRIS_DATA, (TRIS_SIZE - 1), 0, Line);
+                    return true;
+                }
+
+                if (y2 < y1)
+                {
+                    float t = y2;
+                    y2 = y1;
+                    y1 = t;
+                }
+
+                if (Line <= y2 && Line > y1)
+                {
+                    LIPA_PLUS(Intersects, IC, TRIS_DATA, 0, TRIS_SIZE - 1, Line);
+                    IC++;
                 }
             }
 
