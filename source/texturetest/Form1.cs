@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -20,6 +22,8 @@ namespace TextureTest
         public Form1()
         {
             InitializeComponent();
+
+            this.BackColor = Color.Black;
         }
 
         renderX GL;
@@ -30,11 +34,18 @@ namespace TextureTest
         int textureHeightMinusOne;
         int textureHeight;
 
+        Int32[] bits;
+        GCHandle bitsHandle;
+        Bitmap bitmap;
+
         private void Form1_Load(object sender, EventArgs e)
         {
-            this.ClientSize = new System.Drawing.Size(RENDER_WIDTH, RENDER_HEIGHT);
+            this.ClientSize = new System.Drawing.Size(RENDER_WIDTH * 2, RENDER_HEIGHT * 2);
+            this.bits = new int[RENDER_WIDTH * RENDER_HEIGHT];
+            this.bitsHandle = GCHandle.Alloc(this.bits, GCHandleType.Pinned);
+            this.bitmap = new Bitmap(RENDER_WIDTH, RENDER_HEIGHT, RENDER_WIDTH * 4, PixelFormat.Format32bppPArgb, this.bitsHandle.AddrOfPinnedObject());
 
-            GL = new renderX(RENDER_WIDTH, RENDER_HEIGHT, this.Handle);
+            GL = new renderX(RENDER_WIDTH, RENDER_HEIGHT);
             //GL.Clear();
 
             var cameraPosition = new Vector3(128, 128, 4000);
@@ -60,12 +71,13 @@ namespace TextureTest
             textureWidthMinusOne = texture2d.Width - 1;
             textureHeightMinusOne = texture2d.Height - 1;
 
-
             Timer timer = new Timer();
-            timer.Interval = 15;
+            timer.Interval = 1000;
             timer.Tick += timer_Tick;
 
             timer.Start();
+
+            this.Paint += new System.Windows.Forms.PaintEventHandler(this.DoPaint);
         }
 
         private Tuple<float[], int> makePlane(Vector3 origin, Vector2 size, Vector2 tessellation)
@@ -175,6 +187,12 @@ namespace TextureTest
 
         void timer_Tick(object sender, EventArgs e)
         {
+            // Force a re-render:
+            this.Invalidate();
+        }
+
+        private void DoPaint(object sender, PaintEventArgs e)
+        {
             // Yes, creating the vertex data every frame is a bad idea - when you are rendering many frames.
             // However in Anaximander I don't have a timer, I render once and blit to a Bitmap. After that it's all destroyed.
             var planeData = makePlane(new Vector3(0, 0, 0), new Vector2(256, 256), new Vector2(256, 256));
@@ -195,7 +213,11 @@ namespace TextureTest
                 GL.Draw();
             }
 
-            GL.Blit();
+            GL.BlitIntoBitmap(this.bitmap, new Point(), new Rectangle(0, 0, this.bitmap.Width, this.bitmap.Height));
+
+            // Draw centered on form.
+            var drawArea = new RectangleF(0, 0, this.ClientSize.Width, this.ClientSize.Height);
+            e.Graphics.DrawImageUnscaled(this.bitmap, ((int)drawArea.Width - this.bitmap.Width) / 2, ((int)drawArea.Height - this.bitmap.Height) / 2);
         }
 
         unsafe void CubeVS(float* OUT, float* IN, int Index)
@@ -211,6 +233,7 @@ namespace TextureTest
         unsafe void CubeFS(byte* BGR, float* Attributes, int Index)
         {
             // Uncomment block to force rendering of single color, excepting where the index < 50.
+            // Useful for debugging issue #5.
             //BGR[0] = 255;
             //BGR[1] = 255;
             //BGR[2] = 255;
@@ -219,12 +242,6 @@ namespace TextureTest
             //    BGR[0] = 0;
             //    BGR[1] = 255;
             //    BGR[2] = 0;
-            //}
-            //var clrraw = (BGR[2] << 16) | (BGR[1] << 8) | (BGR[0] << 0);
-            //var clr = Color.FromArgb(clrraw);
-            //if (clr.G < 255)
-            //{
-            //    return; // Add a breakpoint here to debug when the clear color leaks through.
             //}
             //return;
 
