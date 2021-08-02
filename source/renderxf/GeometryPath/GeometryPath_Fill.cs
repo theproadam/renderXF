@@ -3636,6 +3636,26 @@ namespace renderX2
 
                     FROM[0] = roundf(FROM[0]);
                     TO[0] = roundf(TO[0]);
+                    bool usingZ;
+
+                    
+                    if (FROM[0] == TO[0] && (int)FROM[0] < renderWidth && (int)FROM[0] >= 0)
+                    {
+                        slopeZ = 0;
+                        bZ = FROM[1]; //depth 1
+                        usingZ = false;
+
+                        for (int z = 0; z < Stride - 3; z++)
+                        {
+                            slopeAstack[z] = 0;
+                            bAstack[z] = FROM[2 + z];
+                        }
+                        FromX = (int)FROM[0];
+                        ToX = FromX;
+                        goto OnlyOnePixel;
+
+                    }
+
 
                     FromX = (int)FROM[0] == 0 ? 0 : (int)FROM[0] + 1;
                     ToX = (int)TO[0];
@@ -3647,7 +3667,7 @@ namespace renderX2
                     if (FromX < 0) FromX = 0;
 
                     float ZDIFF = 1f / FROM[1] - 1f / TO[1];
-                    bool usingZ = ZDIFF != 0;
+                    usingZ = ZDIFF != 0;
                     if (ZDIFF != 0) usingZ = ZDIFF * ZDIFF >= 0.00001f;
 
                     if (usingZ & matrixlerpv != 1)
@@ -3669,7 +3689,7 @@ namespace renderX2
                             bAstack[b] = sB;
                         }
 
-
+                    OnlyOnePixel:
                     //IF ATTRIBS ARE PLACE ON A XZ FLAT PLANE (IN SCREEN SPACE) THE INTERPOLATION BREAKS!!!
                     //FOR SOME REASON USING REGULAR LINEAR INTERPOLATION WORKS PERFECTELY OK.
                     //THE Z VALUES FROM X1 to X2 INTERSECTS SEEMS TO BE EXACTLY THE SAME
