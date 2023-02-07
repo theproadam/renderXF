@@ -102,6 +102,9 @@ Shader VignetteShader = new Shader(VignettePass);
 GL.SelectShader(VignetteShader);
 GL.Pass();
 ```
+### Most Applicable Usage
+The best case scenario to use this is for CAD applications, where frames are not continuously rendered. The software renderer is fast, but continuously rendering will crank your CPU temps high.
+![CAD Example](https://github.com/theproadam/renderXF/blob/master/Screenshots/cad_exmpl.png?raw=true[)
 
 ### Buffer caching
 The drawing and depth buffer can both be saved. This can hugely improve performance by just rendering what is moving.
